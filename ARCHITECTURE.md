@@ -63,8 +63,15 @@ index.html
   ├─ presets/index.js
   │   └─ Standalone
   │
-  └─ ai/analysis.js
-      └─ Standalone
+  ├─ ai/analysis.js
+  │   └─ Standalone
+  │
+  └─ core/events.js [NEW v5.4.3]
+      └─ Uses core/api.js (window.action), core/preview.js (cancelPreview),
+          core/history.js (updateCoverage), ai/analysis.js (updateFixAvailability,
+          updateColourModeToggle) — subscribes once to Photoshop's own
+          notification events (select/historyStateChanged/open/close) so those
+          readouts stay live without polling.
 ```
 
 **Key Invariant:** Memory, Errors, Validation, Benchmark **NEVER** call into Photoshop API directly. They remain pure utility modules.

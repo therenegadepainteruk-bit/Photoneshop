@@ -218,6 +218,7 @@ async function init() {
   initLayerTarget();
   initDTStudio();
   initModal();
+  initPhotoshopEventListeners(); // core/events.js — keeps coverage/fix/RGB-CMYK readouts in sync with PS-native changes
 
   // Print Doctor (tab 1)
   bind("runDoctor", runPrintDoctor); // ai/analysis.js

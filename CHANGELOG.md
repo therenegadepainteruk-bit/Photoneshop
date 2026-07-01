@@ -1,5 +1,79 @@
 # Changelog
 
+## v5.4.3 — Responsiveness: native Photoshop event listeners replace stale-until-next-click UI state
+
+Added `core/events.js`, subscribing once to Photoshop's own notification
+events instead of leaving several UI readouts to refresh only reactively
+after a user-driven plugin action. No image-processing code touched.
+
+### Added
+
+- `core/events.js` — `initPhotoshopEventListeners()`, called once from
+  `ui/panels.js`'s `init()`, registers a single
+  `window.action.addNotificationListener(["select", "historyStateChanged",
+"open", "close"], handler)`. A module-level guard flag makes repeat calls a
+  no-op, so the listener can never be double-registered (repeat calls would
+  otherwise double-fire the handler per event).
+  - `"select"` covers an active-document switch, a layer selection change, a
+    channel selection change, and a pixel-selection change — Photoshop uses
+    one event for all four.
+  - `"historyStateChanged"` covers any undo/redo/new History-panel state,
+    including layer/selection/channel edits that don't themselves change
+    what's selected.
+  - `"open"`/`"close"` cover document lifecycle.
+  - On every one of these events the handler refreshes three readouts that
+    previously only updated after a plugin-driven action: the footer's live
+    ink-coverage %, Print Doctor's fix-button availability, and the RGB/CMYK
+    toggle highlight. Previously, switching the active document, running
+    Photoshop's own Undo, or editing a selection/layer/channel with a
+    Photoshop tool left these showing stale data until the next slider drag
+    or button click.
+  - The handler also tracks the active document's id; if it changed since the
+    last event **and** a live-preview session was active, it calls the
+    existing `cancelPreview()` immediately (a no-op unless a session is
+    active) instead of leaving a stale session to surface as a "Preview
+    error" the next time a slider on the newly-active document is touched. A
+    same-document event (a layer selection or history-state change while
+    staying on the same document) does **not** trigger this — verified by
+    `test/events.test.js`.
+- `test/events.test.js` (7 tests) — loads the real `core/events.js` into an
+  isolated vm with stubbed `updateFixAvailability`/`updateColourModeToggle`/
+  `updateCoverage`/`cancelPreview`, and asserts: exactly one listener gets
+  registered even across repeat `initPhotoshopEventListeners()` calls, the
+  handler refreshes all three readouts, `cancelPreview()` only fires on an
+  actual document-id change (not on same-document events, not when no
+  preview session is active), and the handler never throws even if a
+  downstream refresh function does.
+
+### Changed
+
+- `core/preview.js` `schedulePreview()`/`clearPreviewTimer()` — the
+  live-preview debounce was a `setInterval` ticking on a fixed clock,
+  checking a dirty flag each tick and clearing itself once nothing had
+  changed since the last tick. Replaced with a self-rescheduling `setTimeout`
+  chain: identical timing (still fires at most once every `DEBOUNCE_MS`
+  while a slider keeps moving, still stops itself the first tick nothing's
+  dirty), but only ever has one timer pending at a time instead of a
+  recurring interval running on its own fixed schedule.
+
+### Deliberately left as-is
+
+- `waitForRenderLock()`'s internal 30ms poll loop (`core/preview.js`) — this
+  waits on the plugin's **own** in-flight async render/write, not on any
+  Photoshop application state, so there is no Photoshop notification event
+  it could subscribe to instead.
+- `core/api.js`'s `setStatus()` auto-hide `setTimeout` and
+  `core/preview.js`'s `setTimeout(refreshPreview, 0)` — one-shot UI-toast and
+  same-tick-coalescing timers, not polling, and not something a Photoshop
+  event listener is relevant to.
+- The chunked-halftone `setTimeout(r, 0)` yield points in
+  `engines/halftone.js`/`engines/halftone-tiled.js` — image-processing
+  chunking, out of scope for this change.
+
+Not verified against a live Photoshop/UXP host in this environment — see
+README "Status (honest)". Verified via `npm run format:check`, `npm run
+lint`, and `npm test` (48/48 passing, 7 new).
+
 ## v5.4.2 — Photoshop-communication optimisation: fewer batchPlay round trips
 
 Reviewed every `bp()`/`batchPlay` call site for sequences of separate,

@@ -103,6 +103,7 @@ window.PhotoneshopInit = (function () {
     "engines/separation.js": ["kMeansColors", "splitChannels", "recolorChannel", "autoSeparate", "rgbToCmyk"],
     "ai/analysis.js": ["runPrintDoctor", "runDeepAnalysis", "runProductionCheck"],
     "presets/index.js": ["loadPresets", "saveUserPreset", "saveLastUsed"],
+    "core/events.js": ["initPhotoshopEventListeners"],
     // engines/halftone-tiled.js intentionally omitted — experimental/unwired by
     // design (see ARCHITECTURE.md), not a load-bearing dependency of anything.
   };

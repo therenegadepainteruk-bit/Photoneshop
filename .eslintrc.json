@@ -102,6 +102,8 @@
     "fixFlatten": "readonly",
     "setColourMode": "readonly",
     "updateFixAvailability": "readonly",
+    "updateColourModeToggle": "readonly",
+    "initPhotoshopEventListeners": "readonly",
     "loadPresets": "readonly",
     "saveUserPreset": "readonly",
     "saveLastUsed": "readonly",

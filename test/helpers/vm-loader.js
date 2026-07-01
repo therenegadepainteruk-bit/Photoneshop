@@ -170,6 +170,7 @@ export const FULL_LOAD_ORDER = [
   "engines/separation.js",
   "ai/analysis.js",
   "presets/index.js",
+  "core/events.js",
   "core/init-guard.js",
 ];
 

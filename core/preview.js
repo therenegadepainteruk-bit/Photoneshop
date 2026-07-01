@@ -78,7 +78,7 @@ function docStillValid() {
 // FIX 2.2: Clear preview timer to prevent accumulation on tab switches
 function clearPreviewTimer() {
   if (_previewTimer) {
-    clearInterval(_previewTimer);
+    clearTimeout(_previewTimer);
     _previewTimer = null;
   }
 }
@@ -182,19 +182,25 @@ async function refreshPreview() {
   }
 }
 
+// Self-rescheduling setTimeout chain rather than setInterval: identical
+// timing (fires at most once every DEBOUNCE_MS while a slider keeps moving,
+// stops on its own the first tick nothing changed since), but only ever has
+// one pending timer scheduled at a time instead of a recurring interval
+// ticking on a fixed clock regardless of whether refreshPreview is keeping up.
 function schedulePreview() {
   if (!hasDoc() || !EDIT_PANES[_currentTab]) return;
   _previewDirty = true;
   if (_previewTimer) return;
-  _previewTimer = setInterval(function () {
+  const tick = function () {
     if (!_previewDirty) {
-      clearInterval(_previewTimer);
       _previewTimer = null;
       return;
     }
     _previewDirty = false;
     refreshPreview();
-  }, DEBOUNCE_MS);
+    _previewTimer = setTimeout(tick, DEBOUNCE_MS);
+  };
+  _previewTimer = setTimeout(tick, DEBOUNCE_MS);
 }
 
 async function removePreview() {
