@@ -1,0 +1,80 @@
+{
+  "manifestVersion": 5,
+  "id": "com.photoneshop.core",
+  "name": "Photoneshop",
+  "version": "5.2.5",
+  "main": "index.html",
+  "host": {
+    "app": "PS",
+    "minVersion": "23.3.0",
+    "data": {
+      "apiVersion": 2
+    }
+  },
+  "entrypoints": [
+    {
+      "type": "panel",
+      "id": "photoneshop.panel",
+      "label": {
+        "default": "Photoneshop"
+      },
+      "minimumSize": {
+        "width": 280,
+        "height": 400
+      },
+      "maximumSize": {
+        "width": 1200,
+        "height": 2000
+      },
+      "preferredDockedSize": {
+        "width": 340,
+        "height": 900
+      },
+      "preferredFloatingSize": {
+        "width": 380,
+        "height": 920
+      },
+      "icons": [
+        {
+          "width": 23,
+          "height": 23,
+          "path": "icons/icon.png",
+          "scale": [
+            1,
+            2
+          ],
+          "theme": [
+            "darkest",
+            "dark",
+            "medium",
+            "lightest",
+            "light",
+            "all"
+          ]
+        }
+      ]
+    }
+  ],
+  "icons": [
+    {
+      "width": 23,
+      "height": 23,
+      "path": "icons/icon.png",
+      "scale": [
+        1,
+        2
+      ],
+      "theme": [
+        "darkest",
+        "dark",
+        "medium",
+        "lightest",
+        "light",
+        "all"
+      ]
+    }
+  ],
+  "requiredPermissions": {
+    "localFileSystem": "request"
+  }
+}
