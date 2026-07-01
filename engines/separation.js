@@ -153,20 +153,22 @@ async function splitChannels() {
     let centroidCount = 0;
     _channelLayers = [];
     await modal("Photoneshop: split into colour layers", async function () {
-      const sourceId = await bpCreateLayer([{ _obj: "mergeVisible", duplicate: true }]);
-      if (sourceId == null) throw new Error("Could not stamp artwork");
-      await bp([{ _obj: "hide", null: [{ _ref: "layer", _id: sourceId }] }]).catch(function () {});
-      const px = await window.imaging.getPixels({ layerID: sourceId, targetSize: { width: w, height: h } });
+      // Read the merged, currently-visible composite straight from the Imaging
+      // API (same "no layerID" composite read already trusted elsewhere in this
+      // codebase — core/history.js samplePixelStats(), engines/vintage.js
+      // autoDetectThreshold(), ai/analysis.js runDeepAnalysis()) instead of
+      // paying for a mergeVisible+duplicate stamp layer just to immediately read
+      // and discard it. Same pixels (Photoshop's own composite render), no extra
+      // full-resolution layer ever materialised — faster and lighter on large,
+      // many-layer documents, and one less create+hide+delete round trip.
+      const px = await window.imaging.getPixels({ targetSize: { width: w, height: h } });
       const buf = await px.imageData.getData();
       const comps = px.imageData.components;
       px.imageData.dispose();
 
       const centroids = kMeansColors(buf, comps, n, 8);
       centroidCount = centroids.length;
-      if (centroids.length === 0) {
-        await bp([{ _obj: "delete", _target: [{ _ref: "layer", _id: sourceId }] }]).catch(function () {});
-        return;
-      }
+      if (centroids.length === 0) return;
 
       for (let c = 0; c < centroids.length; c++) {
         const col = centroids[c];
@@ -209,7 +211,6 @@ async function splitChannels() {
           fullH: doc.height,
         });
       }
-      await bp([{ _obj: "delete", _target: [{ _ref: "layer", _id: sourceId }] }]).catch(function () {});
     });
 
     if (centroidCount === 0) {
@@ -460,10 +461,10 @@ async function autoSeparate() {
     const groupName = "AutoSeparation";
     let channels = [];
     await modal("Photoneshop: auto separate", async function () {
-      const sourceId = await bpCreateLayer([{ _obj: "mergeVisible", duplicate: true }]);
-      if (sourceId == null) throw new Error("Could not stamp artwork");
-      await bp([{ _obj: "hide", null: [{ _ref: "layer", _id: sourceId }] }]).catch(function () {});
-      const px = await window.imaging.getPixels({ layerID: sourceId, targetSize: { width: w, height: h } });
+      // Read the merged composite directly (see splitChannels() above for why
+      // this replaces a mergeVisible+duplicate stamp layer) — same pixels, no
+      // extra full-resolution layer, one less create+hide+delete round trip.
+      const px = await window.imaging.getPixels({ targetSize: { width: w, height: h } });
       const buf = await px.imageData.getData();
       const comps = px.imageData.components;
       px.imageData.dispose();
@@ -507,10 +508,7 @@ async function autoSeparate() {
         });
       } else {
         const centroids = kMeansColors(buf, comps, n, 8);
-        if (centroids.length === 0) {
-          await bp([{ _obj: "delete", _target: [{ _ref: "layer", _id: sourceId }] }]).catch(function () {});
-          return;
-        }
+        if (centroids.length === 0) return;
         channels = centroids.map(function (col, c) {
           const ink =
             mode === "simprocess"
@@ -567,7 +565,6 @@ async function autoSeparate() {
         await bp([{ _obj: "select", _target: [{ _ref: "layer", _id: regId }] }]).catch(function () {});
         await groupSelectedInto(groupName);
       }
-      await bp([{ _obj: "delete", _target: [{ _ref: "layer", _id: sourceId }] }]).catch(function () {});
     });
 
     if (channels.length === 0) {

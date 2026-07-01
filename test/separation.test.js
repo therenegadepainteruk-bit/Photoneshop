@@ -53,4 +53,22 @@ describe("engines/separation.js (real) — auto separation", () => {
   it("autoSeparate is exported as a real function", () => {
     expect(typeof context.autoSeparate).toBe("function");
   });
+
+  it("REGRESSION GUARD: splitChannels()/autoSeparate() read the composite via the Imaging API directly, not a mergeVisible+duplicate stamp layer", () => {
+    const src = readRepoFile("engines/separation.js");
+    // The mergeVisible+duplicate "sample source" layer (and its matching hide/
+    // delete) were removed in favour of a direct composite getPixels() read —
+    // same pixels (Photoshop's own composite render), no extra full-resolution
+    // layer ever materialised. Guard against it silently coming back.
+    expect(/_obj:\s*"mergeVisible"/.test(src)).toBe(false);
+    // Both remaining getPixels() calls in this file (one in splitChannels(),
+    // one in autoSeparate()) must be composite reads (no layerID) at the
+    // already-downscaled targetSize.
+    const getPixelsCalls = src.match(/window\.imaging\.getPixels\(\{[\s\S]*?\}\s*\)/g) || [];
+    expect(getPixelsCalls.length).toBe(2);
+    getPixelsCalls.forEach(function (call) {
+      expect(call).not.toContain("layerID");
+      expect(call).toContain("targetSize");
+    });
+  });
 });

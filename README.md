@@ -1,4 +1,4 @@
-# Photoneshop v5.4.3
+# Photoneshop v5.4.4
 
 Photoshop UXP plugin for DTF / DTG / screen-print garment workflows.
 
@@ -53,7 +53,7 @@ isolated from each other. Highlights:
 - Verified during migration that the suite still has teeth: reintroducing the v5.2
   dead-global bug fails the functional test and a regression guard immediately.
 
-48 tests across 12 files, all passing against real source. Exit code is non-zero on
+49 tests across 12 files, all passing against real source. Exit code is non-zero on
 any failure (CI-ready).
 
 ## Install
@@ -79,8 +79,27 @@ Folder-copy installs do not work; UXP requires sideloading via UDT.
 | Photoshop-op wrapping (`executeAsModal`)                         | Every document-modifying action audited; all wrap in one atomic modal scope, live-preview races guarded                                                        |
 | Photoshop-op batching (`batchPlay`)                              | Redundant sequential calls folded into single multi-descriptor calls where safe (see v5.4.2 note)                                                              |
 | Native event listeners (`core/events.js`)                        | Coverage/fix-availability/RGB-CMYK readouts sync on PS select/historyStateChanged/open/close — see v5.4.3 note, **not yet verified in a live Photoshop panel** |
+| Pixel sampling (Colours/Screen Studio colour detection)          | Reads the composite directly via the Imaging API — no throwaway full-resolution stamp layer (see v5.4.4 note)                                                  |
 
 See `CHANGELOG.md` and `INTEGRATION-REPORT-v5.2.1.md` for detail.
+
+## v5.4.4 note
+
+`splitChannels()` and `autoSeparate()` (Colours tab / Screen Studio) used to
+create a real, full-resolution `mergeVisible+duplicate` layer purely to
+sample colours for k-means/CMYK detection, then hide and delete it —
+expensive on a large, many-layer document, since `mergeVisible` has to
+flatten every visible layer into a new full-size layer just to be
+immediately downsampled and thrown away. Both now call
+`imaging.getPixels({ targetSize })` directly on the composite — the same
+no-layer composite read already used by the footer's ink-coverage readout,
+Design Studio's auto-threshold, and Print Doctor's deep scan. Same pixels,
+same k-means/CMYK algorithm, same resulting channel layers; one fewer
+`mergeVisible`/`hide`/`delete` round trip and no throwaway full-resolution
+layer in memory per click. No threshold or halftone algorithm touched — see
+`CHANGELOG.md` for what else was reviewed (the live-preview layers, the
+halftone draft/final split, and the native-filter pipelines) and left
+unchanged because a real layer is genuinely required there.
 
 ## v5.4.3 note
 

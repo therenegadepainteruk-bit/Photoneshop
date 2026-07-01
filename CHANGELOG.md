@@ -1,5 +1,70 @@
 # Changelog
 
+## v5.4.4 — Image-processing optimisation: composite reads instead of stamp layers
+
+Reviewed every `window.imaging.getPixels`/`putPixels` call site and every
+`mergeVisible`+`duplicate` layer creation across the plugin for cases where a
+real, full-resolution layer was being materialised purely to sample pixels
+for analysis, when the Imaging API could read the same data directly. No
+threshold or halftone algorithm changed — this is purely about how source
+pixels are obtained before those algorithms run.
+
+### Changed
+
+- `engines/separation.js` `splitChannels()` and `autoSeparate()` (Colours
+  tab "Split into colour layers" and Screen Studio "Auto separate") both
+  used to do `bpCreateLayer([{ mergeVisible, duplicate: true }])` → `hide` →
+  `getPixels({ layerID, targetSize })` → (k-means / CMYK split) → `delete`,
+  purely to obtain a downsampled colour sample for the k-means/CMYK channel
+  detection. That sample is immediately discarded — the layer was never
+  shown, never edited, never part of the output. Replaced with
+  `getPixels({ targetSize })` (no `layerID`) — the same "read the merged,
+  currently-visible composite" call already trusted elsewhere in this exact
+  codebase (`core/history.js` `samplePixelStats()`, `engines/vintage.js`
+  `autoDetectThreshold()`, `ai/analysis.js` `runDeepAnalysis()`). Same
+  pixels (Photoshop's own composite render, downsampled to the same
+  already-existing `SPLIT_MAX_DIM` cap), same k-means/CMYK algorithm, same
+  resulting channel layers — only how the source pixels are obtained
+  changed. Removes, per click: one `mergeVisible+duplicate` (one of the more
+  expensive operations on a large, many-layer document — it has to
+  flatten every visible layer into a new full-resolution layer), one
+  `hide`, and one `delete`; and removes the full-resolution layer that used
+  to sit in memory for the duration of the k-means pass. Verified with a new
+  static regression guard (`test/separation.test.js`) asserting no
+  `mergeVisible` remains in the file and both remaining `getPixels()` calls
+  are composite reads.
+
+### Reviewed and deliberately left unchanged
+
+- `core/preview.js`'s live-preview source/preview layers (`_sourceId`/
+  `_previewId`) — these are not sampling artifacts; they're the actual
+  layer the user sees update live in the Photoshop canvas and that becomes
+  the committed result on Apply. A real, editable layer is the feature, not
+  a wasteful duplication.
+- `engines/print.js` `applyDT()`'s and `engines/halftone.js`
+  `applyHalftoneEngine()`'s `mergeVisible+duplicate` — these create the
+  actual output layer that batchPlay-filters and/or `putPixels` write into
+  and that stays in the document afterward; not a discard-after-read sample.
+- Photoshop-native adjustment/filter commands (brightness/contrast,
+  exposure, gaussian blur, threshold, median, noise, unsharp mask) applied
+  via `batchPlay` in `engines/vintage.js`/`engines/print.js` — these already
+  run through Photoshop's own optimised native filter pipeline, which is
+  faster and more reliably identical-output than a JS reimplementation
+  through the Imaging API would be. Not the "layer-based/duplicated" waste
+  this pass targeted.
+- `engines/halftone.js`'s existing draft/final split
+  (`writeHalftonePreview` downsampled + nearest-neighbour upscale for live
+  dragging, `writeHalftoneFinal` full chunked resolution on Apply) — already
+  exactly the pattern this pass looked for; nothing to change.
+- `core/diagnostics.js`'s `mergeVisible+duplicate` + `getPixels(layerID)`
+  round trips — these exist specifically to exercise and time the real
+  layer-based `getPixels`→`putPixels` pathway itself (Test 4 explicitly
+  leaves its result layer for manual visual inspection); replacing them with
+  a composite read would defeat their diagnostic purpose.
+
+Verified via `npm run format:check`, `npm run lint`, and `npm test`
+(49/49 passing, 1 new regression guard).
+
 ## v5.4.3 — Responsiveness: native Photoshop event listeners replace stale-until-next-click UI state
 
 Added `core/events.js`, subscribing once to Photoshop's own notification
