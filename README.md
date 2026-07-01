@@ -1,4 +1,4 @@
-# Photoneshop v5.3.0
+# Photoneshop v5.3.1
 
 Photoshop UXP plugin for DTF / DTG / screen-print garment workflows.
 
@@ -23,29 +23,38 @@ architectural modules that genuinely operate on real data:
 No nonexistent globals, no mock render in the active path. The Apply-halftone button
 works again (restored to the v5.0 functional behaviour) and is now instrumented.
 
-## Tests — `npm test` (or `node test-suite.js`)
+## Tests — `npm test` (Vitest)
 
-First time: `npm install` (installs ESLint + Prettier as dev tooling; the plugin
-itself has zero runtime dependencies — Photoshop's UXP host never touches `node_modules`).
+First time: `npm install` (installs Vitest + ESLint + Prettier as dev tooling; the
+plugin itself has zero runtime dependencies — Photoshop's UXP host never touches
+`node_modules`).
 
-- `npm test` — runs the real test suite
+- `npm test` — runs the real test suite once (`vitest run`)
+- `npm run test:watch` — Vitest's interactive watch mode, for local development
+- `npm run test:coverage` — runs the suite with V8 code coverage (`coverage/` — gitignored)
 - `npm run lint` — ESLint, checks for undefined references, dead code, and other real bug patterns
 - `npm run format:check` — Prettier, reports style differences without changing anything
 - `npm run format` — Prettier, rewrites files to the configured style (large diff — run deliberately, not part of normal commits)
 
-The suite loads the **actual shipped source files** (`core/*.js`, `engines/*.js`) into
-a Node `vm` context and exercises the **real exported functions**. It is not a set of
-inline mocks. Highlights:
+The suite lives in `test/*.test.js` (standard Vitest `describe`/`it`/`expect`) and
+loads the **actual shipped source files** (`core/*.js`, `engines/*.js`) into a Node
+`vm` context via `test/helpers/vm-loader.js` — the vm mocks the UXP/Photoshop host
+(`window`, `document`, `require("photoshop")`/`require("uxp")`), then the tests
+exercise the **real exported functions**. It is not a set of inline mocks of the
+plugin's own logic — only the surrounding Photoshop/UXP environment is faked.
+Each test file loads its own fresh vm context in a `beforeAll`, so test files are
+isolated from each other. Highlights:
 
 - A **functional** test calls the halftone integration entry point with a mocked
   Photoshop imaging API and asserts pixels are **read and written** end-to-end, and
   that the written buffer actually contains halftone ink.
 - **Regression guards** fail if anyone reintroduces the dead `window.PhotoneshopHalftone`
   global, a `PhotoneshopError.wrap()` call, or a route to the mock tiled renderer.
-- A **mutation test** was run during development: reintroducing the v5.2 bug makes the
-  functional test and a guard fail (exit code 1). The suite has teeth.
+- Verified during migration that the suite still has teeth: reintroducing the v5.2
+  dead-global bug fails the functional test and a regression guard immediately.
 
-20 tests, all passing against real source. Exit code is non-zero on any failure (CI-ready).
+41 tests across 11 files, all passing against real source. Exit code is non-zero on
+any failure (CI-ready).
 
 ## Install
 

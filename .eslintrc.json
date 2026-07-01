@@ -134,6 +134,18 @@
     "ANGLE_CYCLE": "readonly",
     "_channelLayers": "readonly"
   },
+  "overrides": [
+    {
+      "files": ["test/**/*.js", "vitest.config.js"],
+      "parserOptions": {
+        "sourceType": "module"
+      },
+      "env": {
+        "browser": false,
+        "node": true
+      }
+    }
+  ],
   "rules": {
     "no-undef": "error",
     "no-unused-vars": ["off"],
@@ -153,5 +165,5 @@
     "no-setter-return": "error",
     "no-async-promise-executor": "error"
   },
-  "ignorePatterns": ["node_modules/", "icons/"]
+  "ignorePatterns": ["node_modules/", "icons/", "coverage/"]
 }

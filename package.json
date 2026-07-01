@@ -1,11 +1,13 @@
 {
   "name": "photoneshop",
-  "version": "5.3.0",
+  "version": "5.3.1",
   "private": true,
   "description": "Photoshop UXP plugin for DTF / DTG / screen-print garment workflows.",
   "main": "index.js",
   "scripts": {
-    "test": "node test-suite.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
@@ -34,7 +36,9 @@
     "node": ">=18"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^3.2.6",
     "eslint": "^8.57.1",
-    "prettier": "^3.9.4"
+    "prettier": "^3.9.4",
+    "vitest": "^3.2.6"
   }
 }

@@ -1,5 +1,61 @@
 # Changelog
 
+## v5.3.1 — Migrated the test suite to Vitest
+
+The custom 27KB `test-suite.js` (hand-rolled `test()`/`assert()` harness) is
+replaced by standard Vitest `describe`/`it`/`expect`, split across `test/*.test.js`
+by module. Motivation: standardized output, real V8 code coverage reporting,
+per-file test isolation, and parallel execution across files — none of which the
+custom harness had.
+
+### What changed
+
+- `test-suite.js` deleted. Its logic moved to `test/*.test.js` (11 files, one per
+  module/concern — `memory`, `errors`, `validation`, `api-guard`, `benchmark`,
+  `halftone-tiled`, `halftone-integration`, `separation`, `init-guard`,
+  `source-loading`, `regression-guards`), plus a shared
+  `test/helpers/vm-loader.js` extracted from the old suite's vm-loading
+  functions (`loadSharedContext`/`loadIsolated`/`loadFullAppIsolated`).
+- **The vm-based UXP/Photoshop mocking is unchanged in approach** — tests still
+  load the real shipped source files into a Node `vm` context that fakes
+  `window`/`document`/`require("photoshop")`/`require("uxp")`, then call the
+  real exported functions. Only the assertion/runner layer moved to Vitest;
+  the plugin's own logic is still never reimplemented as a mock.
+- Each test file now calls `loadSharedContext()`/`loadIsolated()` in its own
+  `beforeAll`, giving every file an independent, freshly-loaded vm context
+  instead of one context shared by the whole suite — genuine test isolation,
+  not just organizational grouping.
+- `vm.runInContext(..., { filename })` now passes the **absolute** source path
+  instead of a relative one — required for `@vitest/coverage-v8` to correctly
+  attribute V8's coverage data (collected per-script by filename) back to the
+  real files on disk. Without this, coverage reports every file at 0% despite
+  the code actually executing.
+- `vitest@3.2.6` / `@vitest/coverage-v8@3.2.6` — pinned to the latest 3.x
+  line rather than 4.x, because Vitest 4 requires Node `^20 || ^22 || >=24`,
+  which would break the `engines.node: ">=18"` constraint this repo already
+  declares and the Node 18 pin in `.github/workflows/ci.yml`.
+- `package.json`: `"test"` is now `vitest run`; added `"test:watch"` (Vitest's
+  interactive watch mode) and `"test:coverage"` (`vitest run --coverage`).
+- `.eslintrc.json`: added a `test/**/*.js` override for `sourceType: "module"`
+  (the test files use `import`/`export`; every other file in this repo is a
+  classic script, kept at `sourceType: "script"`) and ignores `coverage/`.
+- `.gitignore` / `.prettierignore`: added `coverage/` (Vitest's coverage
+  output directory).
+
+### Verified
+
+- All 41 tests pass (one fewer than the old suite's 42 — a redundant "did the
+  source files load" assertion was dropped since a failed `beforeAll` now
+  fails every test in that file with a clear vm error, which is strictly more
+  informative than the old single boolean check).
+- `npm run lint` / `npm run format:check` both clean.
+- Re-ran the same mutation check the old suite's history documents: reverting
+  `applyHalftoneWithArch()` to call the dead `window.PhotoneshopHalftone`
+  global (the exact v5.2 regression) fails the functional test and a
+  regression guard in `test/halftone-integration.test.js`, immediately.
+- `npm run test:coverage` produces real per-file percentages (not 0%), thanks
+  to the absolute-filename fix above.
+
 ## v5.3.0 — DT Studio + Screen Studio; fixed several controls that looked functional but weren't
 
 A functional audit of every slider/chip against where its value is actually read
