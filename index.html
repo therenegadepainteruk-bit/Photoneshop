@@ -10,11 +10,7 @@
       <div class="hd">
         <div>
           <h1>Photoneshop</h1>
-          <p>Garment Print Platform · build 19 (auto separation)</p>
-        </div>
-        <div class="toggle-switch" id="modeToggle" data-on="modeAdvanced" data-off="modeBasic">
-          <div class="toggle-thumb"></div>
-          <button id="modeBasic">Basic</button><button id="modeAdvanced">Advanced</button>
+          <p>Garment Print Platform · build 20 (DT Studio + Screen Studio)</p>
         </div>
       </div>
       <div class="body">
@@ -29,17 +25,16 @@
           <button data-tab="2">Design Studio<span class="tag">Create</span></button>
           <button data-tab="3">Halftone<span class="tag">Dots</span></button>
           <button data-tab="4">Colours<span class="tag">Reduce</span></button>
-          <button data-tab="5">Separation<span class="tag">Channels</span></button>
+          <button data-tab="5">Screen Studio<span class="tag">Channels</span></button>
           <button data-tab="6">White Ink<span class="tag">Underbase</span></button>
           <button data-tab="7">Cleanup<span class="tag">Fix</span></button>
           <button data-tab="8">Garment<span class="tag">Fabric</span></button>
-          <button data-tab="9">DTG<span class="tag">Direct</span></button>
-          <button data-tab="10">DTF<span class="tag">Film</span></button>
-          <button data-tab="11">Preview<span class="tag">Simulate</span></button>
-          <button data-tab="12">Production<span class="tag">Output</span></button>
-          <button data-tab="13">Export<span class="tag">Save</span></button>
-          <button data-tab="14">Presets<span class="tag">Load/Save</span></button>
-          <button data-tab="15">Diagnostics<span class="tag">Debug</span></button>
+          <button data-tab="9">DT Studio<span class="tag">DTG/DTF</span></button>
+          <button data-tab="10">Preview<span class="tag">Simulate</span></button>
+          <button data-tab="11">Production<span class="tag">Output</span></button>
+          <button data-tab="12">Export<span class="tag">Save</span></button>
+          <button data-tab="13">Presets<span class="tag">Load/Save</span></button>
+          <button data-tab="14">Diagnostics<span class="tag">Debug</span></button>
         </div>
 
         <div class="pane on" id="p1">
@@ -306,9 +301,10 @@
             </div>
           </div>
           <div class="stub-note">
-            <strong>Full Separation Engine</strong>Auto Separate above covers spot / CMYK / simulated-process channel
-            splitting, per-channel halftone at rotated screen angles, choke, and registration marks. Advanced spread and
-            vector crop marks are still planned.
+            <strong>Screen Studio</strong>Auto Separate above splits your artwork into spot / CMYK / simulated-process
+            channels and halftones each one simultaneously, at rotated screen angles, with optional choke and
+            registration marks — everything a screen-print job needs in one pass. Advanced spread and vector crop marks
+            are still planned.
           </div>
         </div>
 
@@ -385,76 +381,97 @@
 
         <div class="pane" id="p9">
           <div class="sec">
-            <div class="grp">Printer</div>
-            <div class="chips" id="dtgChips">
-              <button class="chip on" data-dtg="epson">Epson</button
-              ><button class="chip" data-dtg="brother">Brother</button>
-              <button class="chip" data-dtg="kornit">Kornit</button><button class="chip" data-dtg="other">Other</button>
+            <div class="grp">Mode</div>
+            <div class="chips" id="dtModeChips">
+              <button class="chip on" data-dtmode="dtg">DTG</button>
+              <button class="chip" data-dtmode="dtf">DTF</button>
             </div>
           </div>
+
+          <div class="dt-dtg-only">
+            <div class="sec">
+              <div class="grp">Printer</div>
+              <div class="chips" id="dtgChips">
+                <button class="chip on" data-dtg="epson">Epson</button
+                ><button class="chip" data-dtg="brother">Brother</button>
+                <button class="chip" data-dtg="kornit">Kornit</button
+                ><button class="chip" data-dtg="other">Other</button>
+              </div>
+            </div>
+            <div class="sec">
+              <div class="s">
+                <div class="s-row"><label>Ink Reduction</label><span class="s-val" id="dtgInkV">0</span></div>
+                <div class="s-track">
+                  <div class="s-fill" id="dtgInkF"></div>
+                  <input type="range" id="dtgInk" min="0" max="40" value="0" />
+                </div>
+              </div>
+              <div class="s">
+                <div class="s-row"><label>White Boost</label><span class="s-val" id="dtgWhiteV">0</span></div>
+                <div class="s-track">
+                  <div class="s-fill" id="dtgWhiteF"></div>
+                  <input type="range" id="dtgWhite" min="0" max="40" value="0" />
+                </div>
+              </div>
+              <div class="s">
+                <div class="s-row"><label>Detail Preserve</label><span class="s-val" id="dtgDetailV">0</span></div>
+                <div class="s-track">
+                  <div class="s-fill" id="dtgDetailF"></div>
+                  <input type="range" id="dtgDetail" min="0" max="100" value="0" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="dt-dtf-only hide">
+            <div class="sec">
+              <div class="grp">Film Type</div>
+              <div class="chips" id="dtfChips">
+                <button class="chip on" data-dtf="standard">Standard</button
+                ><button class="chip" data-dtf="matte">Matte</button>
+                <button class="chip" data-dtf="soft">Soft Feel</button
+                ><button class="chip" data-dtf="stretch">Stretch</button>
+              </div>
+            </div>
+            <div class="sec">
+              <div class="s">
+                <div class="s-row"><label>Colour Boost</label><span class="s-val" id="dtfColV">0</span></div>
+                <div class="s-track">
+                  <div class="s-fill" id="dtfColF"></div>
+                  <input type="range" id="dtfCol" min="0" max="40" value="0" />
+                </div>
+              </div>
+              <div class="s">
+                <div class="s-row"><label>Ink Reduction</label><span class="s-val" id="dtfInkV">0</span></div>
+                <div class="s-track">
+                  <div class="s-fill" id="dtfInkF"></div>
+                  <input type="range" id="dtfInk" min="0" max="40" value="0" />
+                </div>
+              </div>
+              <div class="s">
+                <div class="s-row"><label>Sharpening</label><span class="s-val" id="dtfSharpV">0</span></div>
+                <div class="s-track">
+                  <div class="s-fill" id="dtfSharpF"></div>
+                  <input type="range" id="dtfSharp" min="0" max="100" value="0" />
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="sec">
-            <div class="s">
-              <div class="s-row"><label>Ink Reduction</label><span class="s-val" id="dtgInkV">0</span></div>
-              <div class="s-track">
-                <div class="s-fill" id="dtgInkF"></div>
-                <input type="range" id="dtgInk" min="0" max="40" value="0" />
-              </div>
-            </div>
-            <div class="s">
-              <div class="s-row"><label>White Boost</label><span class="s-val" id="dtgWhiteV">0</span></div>
-              <div class="s-track">
-                <div class="s-fill" id="dtgWhiteF"></div>
-                <input type="range" id="dtgWhite" min="0" max="40" value="0" />
-              </div>
-            </div>
-            <div class="s">
-              <div class="s-row"><label>Detail Preserve</label><span class="s-val" id="dtgDetailV">0</span></div>
-              <div class="s-track">
-                <div class="s-fill" id="dtgDetailF"></div>
-                <input type="range" id="dtgDetail" min="0" max="100" value="0" />
-              </div>
-            </div>
+            <div class="grp">Halftone Screen</div>
+            <label class="tog"
+              ><input type="checkbox" id="dtHalftone" /><span
+                >Render the flattened output as a halftone (reuses the Halftone tab's LPI / Angle / Dot Gain / Ink
+                Colour)</span
+              ></label
+            >
           </div>
-          <div class="actions"><button class="btn primary" id="applyDTG">Apply DTG optimisation</button></div>
+
+          <div class="actions"><button class="btn primary" id="applyDT">Apply DT optimisation</button></div>
         </div>
 
         <div class="pane" id="p10">
-          <div class="sec">
-            <div class="grp">Film Type</div>
-            <div class="chips" id="dtfChips">
-              <button class="chip on" data-dtf="standard">Standard</button
-              ><button class="chip" data-dtf="matte">Matte</button>
-              <button class="chip" data-dtf="soft">Soft Feel</button
-              ><button class="chip" data-dtf="stretch">Stretch</button>
-            </div>
-          </div>
-          <div class="sec">
-            <div class="s">
-              <div class="s-row"><label>Colour Boost</label><span class="s-val" id="dtfColV">0</span></div>
-              <div class="s-track">
-                <div class="s-fill" id="dtfColF"></div>
-                <input type="range" id="dtfCol" min="0" max="40" value="0" />
-              </div>
-            </div>
-            <div class="s">
-              <div class="s-row"><label>Ink Reduction</label><span class="s-val" id="dtfInkV">0</span></div>
-              <div class="s-track">
-                <div class="s-fill" id="dtfInkF"></div>
-                <input type="range" id="dtfInk" min="0" max="40" value="0" />
-              </div>
-            </div>
-            <div class="s">
-              <div class="s-row"><label>Sharpening</label><span class="s-val" id="dtfSharpV">0</span></div>
-              <div class="s-track">
-                <div class="s-fill" id="dtfSharpF"></div>
-                <input type="range" id="dtfSharp" min="0" max="100" value="0" />
-              </div>
-            </div>
-          </div>
-          <div class="actions"><button class="btn primary" id="applyDTF">Apply DTF optimisation</button></div>
-        </div>
-
-        <div class="pane" id="p11">
           <div class="sec">
             <div class="grp">Garment Colour</div>
             <div class="chips" id="previewGarmentChips">
@@ -472,7 +489,7 @@
           </div>
         </div>
 
-        <div class="pane" id="p12">
+        <div class="pane" id="p11">
           <div class="prod-score-card">
             <div class="prod-score" id="prodScore">—</div>
             <div class="prod-label">Printability Score</div>
@@ -481,7 +498,7 @@
           <div class="actions"><button class="btn primary" id="runProduction">Run production check</button></div>
         </div>
 
-        <div class="pane" id="p13">
+        <div class="pane" id="p12">
           <div class="sec">
             <div class="grp">Screen Print</div>
             <div class="actions">
@@ -498,7 +515,7 @@
           </div>
         </div>
 
-        <div class="pane" id="p14">
+        <div class="pane" id="p13">
           <div class="sec">
             <div class="grp">Built-in Presets</div>
             <div class="preset-cat-chips">
@@ -516,7 +533,7 @@
           </div>
         </div>
 
-        <div class="pane" id="p15">
+        <div class="pane" id="p14">
           <div class="sec">
             <div class="grp">Imaging Pipeline Diagnostics</div>
             <p class="hint">

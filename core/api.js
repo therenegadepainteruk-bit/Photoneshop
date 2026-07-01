@@ -184,11 +184,15 @@ function fillSlider(el) {
   if (f) f.style.width = "calc(" + ((v - min) / (max - min)) * 100 + "% - 8px)";
 }
 
+// Sets a range input's value AND its adjacent "-V" label. The browser silently
+// clamps el.value to [min,max] on assignment (e.g. a preset requesting lpi:0 on a
+// slider whose min="20"), so the label is set from el.value AFTER assignment —
+// not from the raw `value` argument — to guarantee the two never disagree.
 function setSlider(id, value) {
   var el = document.getElementById(id);
   if (!el) return;
   el.value = value;
   var out = document.getElementById(id + "V");
-  if (out) out.textContent = value;
+  if (out) out.textContent = el.value;
   fillSlider(el);
 }

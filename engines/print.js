@@ -73,6 +73,7 @@ function buildWhiteInkPipeline() {
   const density = num("wDensity");
   const choke = Math.max(0, Math.round(num("wChoke") / 3));
   const feather = Math.max(0, Math.round(num("wFeather") / 4));
+  const hlBoost = num("wHl");
   const cmds = [
     {
       _obj: "set",
@@ -96,6 +97,9 @@ function buildWhiteInkPipeline() {
       preserveShape: { _enum: "preserveShape", _value: "roundness" },
     });
   if (feather > 0) cmds.push(opGaussian(feather));
+  // Highlight Boost — lifts the white layer's own brightness so highlight areas of
+  // the underbase lay down denser white ink (was a dead slider; never read here).
+  if (hlBoost > 0) cmds.push(opBright(Math.round(hlBoost * 0.3), 0));
   return cmds;
 }
 
@@ -258,12 +262,43 @@ async function exportSpots() {
 }
 
 // ============================================================
-// DTG OPTIMISER
+// DT STUDIO — DTG + DTF combined, with an optional halftone-screen finishing
+// step that runs the same real pixel-based renderer as the Halftone tab
+// (engines/halftone.js: writeHalftonePreview / writeHalftoneFinal) on the
+// flattened, already-optimised layer.
 // ============================================================
+
+// Small, honest per-printer/per-film adjustments — real multipliers on the
+// existing sliders, not decorative. Previously these chips changed their own
+// "on" class and nothing else (dtgInk/dtgWhite/dtgDetail/dtfCol/dtfInk/dtfSharp
+// were read directly with no profile applied).
+const DTG_PRINTER_PROFILES = {
+  epson: { inkMul: 1.0, whiteMul: 1.0, detailMul: 1.0 },
+  brother: { inkMul: 0.9, whiteMul: 1.1, detailMul: 1.0 },
+  kornit: { inkMul: 1.15, whiteMul: 0.9, detailMul: 1.05 },
+  other: { inkMul: 1.0, whiteMul: 1.0, detailMul: 1.0 },
+};
+const DTF_FILM_PROFILES = {
+  standard: { colMul: 1.0, inkMul: 1.0, sharpMul: 1.0 },
+  matte: { colMul: 0.9, inkMul: 1.0, sharpMul: 0.85 },
+  soft: { colMul: 1.0, inkMul: 1.1, sharpMul: 0.8 },
+  stretch: { colMul: 1.05, inkMul: 0.95, sharpMul: 1.0 },
+};
+
+let _dtMode = "dtg"; // "dtg" | "dtf" — which half of DT Studio is active
+function setDTMode(mode) {
+  _dtMode = mode === "dtf" ? "dtf" : "dtg";
+}
+function getDTMode() {
+  return _dtMode;
+}
+
 function buildDTGPipeline() {
-  const inkRed = num("dtgInk");
-  const whiteBoost = num("dtgWhite");
-  const detail = num("dtgDetail");
+  const printer = activeChip("#dtgChips", "dtg", "epson");
+  const profile = DTG_PRINTER_PROFILES[printer] || DTG_PRINTER_PROFILES.epson;
+  const inkRed = num("dtgInk") * profile.inkMul;
+  const whiteBoost = num("dtgWhite") * profile.whiteMul;
+  const detail = num("dtgDetail") * profile.detailMul;
   const cmds = [];
   if (inkRed > 0) cmds.push(opBright(-Math.round(inkRed * 0.3), Math.round(inkRed * 0.2)));
   if (whiteBoost > 0) cmds.push(opBright(Math.round(whiteBoost * 0.2), 0));
@@ -271,28 +306,12 @@ function buildDTGPipeline() {
   return cmds;
 }
 
-async function applyDTG() {
-  if (!guard()) return;
-  try {
-    const cmds = buildDTGPipeline();
-    if (cmds.length === 0) {
-      setStatus("Adjust sliders then apply", "info");
-      return;
-    }
-    await runNonDestructive("DTG Optimised", cmds, "DTGOptimise");
-    setStatus("DTG optimisation applied", "success");
-  } catch (e) {
-    setStatus("Error: " + e.message, "error");
-  }
-}
-
-// ============================================================
-// DTF OPTIMISER
-// ============================================================
 function buildDTFPipeline() {
-  const colBoost = num("dtfCol");
-  const sharp = num("dtfSharp");
-  const inkRed = num("dtfInk");
+  const film = activeChip("#dtfChips", "dtf", "standard");
+  const profile = DTF_FILM_PROFILES[film] || DTF_FILM_PROFILES.standard;
+  const colBoost = num("dtfCol") * profile.colMul;
+  const sharp = num("dtfSharp") * profile.sharpMul;
+  const inkRed = num("dtfInk") * profile.inkMul;
   const cmds = [];
   if (colBoost > 0) cmds.push(opBright(Math.round(colBoost * 0.3), Math.round(colBoost * 0.5)));
   if (inkRed > 0) cmds.push(opBright(-Math.round(inkRed * 0.2), 0));
@@ -300,16 +319,46 @@ function buildDTFPipeline() {
   return cmds;
 }
 
-async function applyDTF() {
+// Dispatches to whichever half of DT Studio is currently selected. Used by
+// core/preview.js's currentPipeline() map for live preview on tab 9.
+function buildDTPipeline() {
+  return _dtMode === "dtf" ? buildDTFPipeline() : buildDTGPipeline();
+}
+
+async function applyDT() {
   if (!guard()) return;
   try {
-    const cmds = buildDTFPipeline();
-    if (cmds.length === 0) {
+    const cmds = buildDTPipeline();
+    const wantHalftone = chk("dtHalftone");
+    if (cmds.length === 0 && !wantHalftone) {
       setStatus("Adjust sliders then apply", "info");
       return;
     }
-    await runNonDestructive("DTF Optimised", cmds, "DTFOptimise");
-    setStatus("DTF optimisation applied", "success");
+    const modeLabel = _dtMode === "dtf" ? "DTF" : "DTG";
+    const groupName = _dtMode === "dtf" ? "DTFOptimise" : "DTGOptimise";
+    await waitForRenderLock(); // don't touch the layer while a live preview render is still mid-write
+    const myGen = bumpRenderGen();
+    let layerId;
+    await modal(modeLabel + " Optimised", async () => {
+      layerId = await bpCreateLayer([{ _obj: "mergeVisible", duplicate: true }]);
+      if (layerId == null) throw new Error("Could not create " + modeLabel + " layer");
+      if (cmds.length) await bp(cmds);
+      // Real pixel-based halftone (engines/halftone.js) on the flattened, already
+      // colour/ink-optimised layer — reuses the Halftone tab's LPI/Angle/Dot
+      // Gain/Ink Colour controls, exactly like the Halftone tab's own Apply.
+      if (wantHalftone) await writeHalftoneFinal(layerId, myGen);
+      await bp([
+        {
+          _obj: "set",
+          _target: [{ _ref: "layer", _id: layerId }],
+          to: { _obj: "layer", name: modeLabel + " Optimised" },
+        },
+      ]);
+      await bp([{ _obj: "select", _target: [{ _ref: "layer", _id: layerId }] }]).catch(() => {});
+      await groupSelectedInto(groupName);
+    });
+    recordAction("group", groupName);
+    setStatus(modeLabel + " optimisation applied" + (wantHalftone ? " + halftone screen" : ""), "success");
   } catch (e) {
     setStatus("Error: " + e.message, "error");
   }

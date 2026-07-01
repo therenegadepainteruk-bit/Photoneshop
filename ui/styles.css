@@ -58,6 +58,12 @@ body {
   text-transform: uppercase;
 }
 
+/* Generic visibility utility (DT Studio's DTG/DTF sub-mode sections use this;
+   .bar.hide / .modal-overlay.hide above them are more specific and unaffected). */
+.hide {
+  display: none;
+}
+
 /* SLIDING TOGGLE SWITCH — shared by Basic/Advanced and RGB/CMYK */
 .toggle-switch {
   position: relative;

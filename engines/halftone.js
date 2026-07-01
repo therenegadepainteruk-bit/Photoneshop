@@ -113,14 +113,55 @@ if (typeof window !== "undefined") {
 
 const LIVE_PREVIEW_CAP = 700; // px, long edge — keeps live dragging near-instant
 
-function computeHalftoneBuffer(srcBuf, comps, w, h, lpi, angleDeg, dotGainPct, dpi, inkR, inkG, inkB) {
+// Reads the Halftone tab's "Dot Size" slider (#htSize, 4-30, default 8) as a
+// multiplier on the computed dot radius. Missing/empty (e.g. the Node test-suite's
+// DOM stub, which doesn't define this id) defaults to 1 — i.e. identical to the
+// pre-v5.3 behaviour, so nothing that already relied on the default size regresses.
+function readHalftoneSizeFactor() {
+  const raw = typeof val === "function" ? val("htSize") : "";
+  if (raw === "" || raw == null) return 1;
+  const n = parseFloat(raw);
+  if (!(n > 0)) return 1;
+  // Clamped so the slider fine-tunes dot size without letting adjacent dots
+  // overlap into a solid fill (which would look like a rendering bug, not a effect).
+  return Math.max(0.5, Math.min(2, n / 8));
+}
+
+// Reads the Halftone tab's "Amount" slider (#halftone, 0-100, default 100) as the
+// overall strength of the effect (0 = no dots, 100 = full-size dots as computed).
+// Missing/empty defaults to 100 (full amount) for the same backward-compat reason
+// as readHalftoneSizeFactor() above.
+function readHalftoneAmountPct() {
+  const raw = typeof val === "function" ? val("halftone") : "";
+  if (raw === "" || raw == null) return 100;
+  const n = parseFloat(raw);
+  return isNaN(n) ? 100 : Math.max(0, n);
+}
+
+function computeHalftoneBuffer(
+  srcBuf,
+  comps,
+  w,
+  h,
+  lpi,
+  angleDeg,
+  dotGainPct,
+  dpi,
+  inkR,
+  inkG,
+  inkB,
+  sizeFactor,
+  amountPct
+) {
   const out = new Uint8Array(w * h * 4); // default alpha 0 = transparent
   const cellSize = Math.max(1.5, (dpi || 300) / lpi);
   const rad = (angleDeg * Math.PI) / 180;
   const cos = Math.cos(rad),
     sin = Math.sin(rad);
   const gain = (dotGainPct || 0) / 100;
-  const maxRFactor = (1 - gain * 0.5) * 1.25;
+  const size = sizeFactor > 0 ? sizeFactor : 1; // "Dot Size" slider — defaults to 1 (no change)
+  const amount = amountPct == null ? 1 : Math.max(0, amountPct) / 100; // "Amount" slider — defaults to 1 (full)
+  const maxRFactor = (1 - gain * 0.5) * 1.25 * size;
 
   const corners = [
     [0, 0],
@@ -163,7 +204,7 @@ function computeHalftoneBuffer(srcBuf, comps, w, h, lpi, angleDeg, dotGainPct, d
       if (a < 10) continue;
       // Round tone to integer to prevent dot-radius jitter (fix 2.12)
       const tone = comps >= 3 ? Math.round((srcBuf[p] + srcBuf[p + 1] + srcBuf[p + 2]) / 3) : srcBuf[p];
-      const dotR = (cellSize / 2) * maxRFactor * (1 - tone / 255);
+      const dotR = (cellSize / 2) * maxRFactor * (1 - tone / 255) * amount;
       if (dotR <= 0) continue;
       const dotR2 = dotR * dotR;
       const reach = Math.ceil(dotR + 1);
@@ -195,9 +236,37 @@ function computeHalftoneBuffer(srcBuf, comps, w, h, lpi, angleDeg, dotGainPct, d
 // document can never block long enough to risk an unresponsive-plugin crash.
 // Bands overlap by enough margin to cover any dot's reach across a boundary
 // (verified zero pixel difference vs. a non-chunked pass in isolated testing).
-async function computeHalftoneBufferChunked(srcBuf, comps, w, h, lpi, angleDeg, dotGainPct, dpi, inkR, inkG, inkB) {
+async function computeHalftoneBufferChunked(
+  srcBuf,
+  comps,
+  w,
+  h,
+  lpi,
+  angleDeg,
+  dotGainPct,
+  dpi,
+  inkR,
+  inkG,
+  inkB,
+  sizeFactor,
+  amountPct
+) {
   if (w * h <= 4_000_000)
-    return computeHalftoneBuffer(srcBuf, comps, w, h, lpi, angleDeg, dotGainPct, dpi, inkR, inkG, inkB);
+    return computeHalftoneBuffer(
+      srcBuf,
+      comps,
+      w,
+      h,
+      lpi,
+      angleDeg,
+      dotGainPct,
+      dpi,
+      inkR,
+      inkG,
+      inkB,
+      sizeFactor,
+      amountPct
+    );
   const out = new Uint8Array(w * h * 4);
   const cellSize = Math.max(1.5, (dpi || 300) / lpi);
   const pad = Math.ceil(cellSize * 2) + 4;
@@ -216,7 +285,21 @@ async function computeHalftoneBufferChunked(srcBuf, comps, w, h, lpi, angleDeg, 
       );
     }
     bandSrc.set(srcBuf.subarray(padY0 * w * comps, padY1 * w * comps));
-    const bandOut = computeHalftoneBuffer(bandSrc, comps, w, bandH, lpi, angleDeg, dotGainPct, dpi, inkR, inkG, inkB);
+    const bandOut = computeHalftoneBuffer(
+      bandSrc,
+      comps,
+      w,
+      bandH,
+      lpi,
+      angleDeg,
+      dotGainPct,
+      dpi,
+      inkR,
+      inkG,
+      inkB,
+      sizeFactor,
+      amountPct
+    );
     const sliceStart = (y0 - padY0) * w * 4,
       sliceLen = (y1 - y0) * w * 4;
     // FIX: Also validate output slice
@@ -314,6 +397,8 @@ async function writeHalftonePreview(layerId, fullW, fullH, myGen) {
   const docResolution = window.app.activeDocument ? window.app.activeDocument.resolution || 300 : 300;
   const effectiveDPI = docResolution * scale; // scale DPI with the buffer so dots stay proportionally correct
   const ink = hexToRgb(val("htColor"));
+  const sizeFactor = readHalftoneSizeFactor();
+  const amountPct = readHalftoneAmountPct();
   const small = computeHalftoneBuffer(
     src.buf,
     src.comps,
@@ -325,7 +410,9 @@ async function writeHalftonePreview(layerId, fullW, fullH, myGen) {
     effectiveDPI,
     ink.r,
     ink.g,
-    ink.b
+    ink.b,
+    sizeFactor,
+    amountPct
   );
   if (typeof isRenderStale === "function" && myGen !== undefined && isRenderStale(myGen)) {
     return variation;
@@ -365,6 +452,8 @@ async function writeHalftoneFinal(layerId, myGen) {
   // FIX 2.8: Default to 300 DPI if resolution is undefined
   const dpi = window.app.activeDocument ? window.app.activeDocument.resolution || 300 : 300;
   const ink = hexToRgb(val("htColor"));
+  const sizeFactor = readHalftoneSizeFactor();
+  const amountPct = readHalftoneAmountPct();
   const out = await computeHalftoneBufferChunked(
     src.buf,
     src.comps,
@@ -376,7 +465,9 @@ async function writeHalftoneFinal(layerId, myGen) {
     dpi,
     ink.r,
     ink.g,
-    ink.b
+    ink.b,
+    sizeFactor,
+    amountPct
   );
   if (typeof isRenderStale === "function" && myGen !== undefined && isRenderStale(myGen)) {
     return variation;

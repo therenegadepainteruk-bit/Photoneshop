@@ -15,10 +15,6 @@ function buildPipeline() {
     distress = num("distress"),
     bleed = num("bleed"),
     grain = num("grain");
-  const halftone = num("halftone"),
-    htSize = num("htSize"),
-    htAngle = num("htAngle"),
-    dotGain = num("dotGain");
   const effect = val("effect");
   const thresh = parseInt(val("thresh"), 10) || 128;
 
@@ -46,21 +42,21 @@ function buildPipeline() {
   // 6. Core threshold
   cmds.push(opThreshold(thresh));
 
-  // 7. Halftone (post-threshold dot texture)
-  if (halftone > 0) {
-    const radius = Math.max(4, htSize);
-    const adjusted = Math.max(4, radius - Math.round(dotGain * 0.3));
-    cmds.push(opHalftone(adjusted, htAngle));
-  }
-
-  // 8. Ink bleed (post-threshold edge spread)
+  // 7. Ink bleed (post-threshold edge spread)
   if (bleed > 0) cmds.push(opMedian(Math.max(1, Math.round(bleed / 3))));
 
-  // 9. Grain
+  // 8. Grain
   if (grain > 0) cmds.push(opNoise(Math.round(grain * 0.25)));
 
-  // 10. Distress (secondary lighter noise pass)
+  // 9. Distress (secondary lighter noise pass)
   if (distress > 0) cmds.push(opNoise(Math.round(distress * 0.12)));
+
+  // NOTE: dot-screen texture is NOT applied here. It used to silently read the
+  // Halftone tab's #halftone/#htSize/#htAngle/#dotGain sliders (a different tab's
+  // DOM elements, defaulting Amount to 100) so every Design Studio apply baked in
+  // an unrequested 8px halftone regardless of what this tab's own controls were
+  // set to. The dedicated Halftone tab (engines/halftone.js) is the real, correct
+  // way to add a dot screen — its Amount/Dot Size controls now genuinely drive it.
 
   return cmds;
 }

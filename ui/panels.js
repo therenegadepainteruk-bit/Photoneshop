@@ -46,6 +46,7 @@ function initSliders() {
     "grain",
     "lpi",
     "htAngle",
+    "htSize",
     "dotGain",
     "halftone",
     "wDensity",
@@ -60,7 +61,7 @@ function initSliders() {
     "dtfSharp",
     "sepChoke",
   ];
-  // Sliders across all live-preview tabs (2,3,6,9,10 — see EDIT_PANES in core/preview.js).
+  // Sliders across all live-preview tabs (2,3,6,9 — see EDIT_PANES in core/preview.js).
   let LIVE_SLIDERS = [
     "thresh",
     "exposure",
@@ -75,6 +76,7 @@ function initSliders() {
     "grain",
     "lpi",
     "htAngle",
+    "htSize",
     "dotGain",
     "wDensity",
     "wChoke",
@@ -158,20 +160,34 @@ function initLayerTarget() {
   });
 }
 
-function initModeToggle() {
-  let sw = document.getElementById("modeToggle");
-  bind("modeBasic", function () {
-    document.getElementById("modeBasic").classList.add("on");
-    document.getElementById("modeAdvanced").classList.remove("on");
-    if (sw) sw.classList.remove("right");
-    setStatus("Basic mode", "info");
+// DT Studio (tab 9) — DTG/DTF sub-mode switch (shows/hides each mode's own
+// section) plus the halftone-screen checkbox, which just needs to trigger a
+// live-preview refresh when toggled (its value is read directly via chk("dtHalftone")
+// everywhere else).
+function initDTStudio() {
+  document.querySelectorAll("#dtModeChips button").forEach(function (b) {
+    b.addEventListener("click", function (e) {
+      document.querySelectorAll("#dtModeChips button").forEach(function (x) {
+        x.classList.remove("on");
+      });
+      e.currentTarget.classList.add("on");
+      let mode = e.currentTarget.dataset.dtmode;
+      setDTMode(mode); // engines/print.js
+      document.querySelectorAll(".dt-dtg-only").forEach(function (el) {
+        el.classList.toggle("hide", mode === "dtf");
+      });
+      document.querySelectorAll(".dt-dtf-only").forEach(function (el) {
+        el.classList.toggle("hide", mode !== "dtf");
+      });
+      if (hasDoc() && EDIT_PANES[_currentTab]) schedulePreview();
+    });
   });
-  bind("modeAdvanced", function () {
-    document.getElementById("modeAdvanced").classList.add("on");
-    document.getElementById("modeBasic").classList.remove("on");
-    if (sw) sw.classList.add("right");
-    setStatus("Advanced mode", "info");
-  });
+  let halftoneChk = document.getElementById("dtHalftone");
+  if (halftoneChk) {
+    halftoneChk.addEventListener("change", function () {
+      if (hasDoc() && EDIT_PANES[_currentTab]) schedulePreview();
+    });
+  }
 }
 
 function initModal() {
@@ -210,7 +226,7 @@ async function init() {
   initSliders();
   initChips();
   initLayerTarget();
-  initModeToggle();
+  initDTStudio();
   initModal();
 
   // Print Doctor (tab 1)
@@ -248,7 +264,7 @@ async function init() {
   bind("reduceColors", splitChannels); // engines/separation.js — real per-colour layers
   bind("exportSpots", exportSpots); // engines/print.js
 
-  // Separation (tab 5)
+  // Screen Studio (tab 5) — channel separation + simultaneous per-channel halftone
   bind("autoSeparate", autoSeparate); // engines/separation.js — full CMYK/spot/sim-process auto pipeline
   bind("shiftColors", shiftColors); // engines/print.js
   bind("applyKnockout", applyKnockout); // engines/print.js
@@ -256,18 +272,15 @@ async function init() {
   // White Ink (tab 6)
   bind("generateUnderbase", generateUnderbase); // engines/print.js
 
-  // DTG (tab 9)
-  bind("applyDTG", applyDTG); // engines/print.js
+  // DT Studio (tab 9) — DTG + DTF + optional halftone screen
+  bind("applyDT", applyDT); // engines/print.js
 
-  // DTF (tab 10)
-  bind("applyDTF", applyDTF); // engines/print.js
-
-  // Export (tab 13)
+  // Export (tab 12)
   bind("exportScreen", exportScreen); // engines/print.js
   bind("exportDTG", exportDTG); // engines/print.js
   bind("exportDTF", exportDTF); // engines/print.js
 
-  // Presets (tab 14) — all defined in presets/index.js
+  // Presets (tab 13) — all defined in presets/index.js
   bind("saveUserPreset", saveUserPreset);
   initBuiltinCategoryChips();
   await loadPresets();

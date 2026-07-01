@@ -1,5 +1,68 @@
 # Changelog
 
+## v5.3.0 — DT Studio + Screen Studio; fixed several controls that looked functional but weren't
+
+A functional audit of every slider/chip against where its value is actually read
+turned up a handful of controls that appeared to do something but didn't (or did
+the wrong thing), plus a tab restructure.
+
+### Tab restructure
+
+- **DT Studio** replaces the separate DTG (tab 9) and DTF (tab 10) tabs. A
+  Mode chip (`#dtModeChips`) switches which sliders/chips are shown and which
+  pipeline `applyDT()` runs (`engines/print.js`: `buildDTPipeline()` dispatches
+  to `buildDTGPipeline()`/`buildDTFPipeline()` via `getDTMode()`/`setDTMode()`).
+  New: an opt-in "Halftone Screen" checkbox (`#dtHalftone`, off by default) that
+  flattens the DTG/DTF-optimised layer and runs it through the same real
+  pixel-based renderer the Halftone tab uses (`writeHalftoneFinal`/
+  `writeHalftoneToLayer`) — live preview included.
+- **Screen Studio** replaces "Separation" (tab 5) — same engine
+  (`engines/separation.js`: `autoSeparate()`), renamed because it already does
+  exactly what the name says: split channels and halftone them simultaneously.
+- Tabs 11–15 renumbered to 10–14 to absorb the DTG/DTF merge.
+
+### Fixed
+
+- **Design Studio silently applied an unrequested halftone dot pattern.**
+  `engines/vintage.js` `buildPipeline()` read `#halftone`/`#htSize`/`#htAngle`/
+  `#dotGain` — DOM elements that only exist on the Halftone tab — with no
+  control on Design Studio itself to turn it off. Since `#halftone` ("Amount")
+  defaults to `value="100"`, every Design Studio apply/preview bolted on an 8px
+  round-dot `colorHalftone` filter regardless of what the user touched. Removed
+  the step entirely; the dedicated Halftone tab is the correct place for this.
+- **Halftone tab's "Amount" and "Dot Size" sliders did nothing.**
+  `computeHalftoneBuffer`/`computeHalftoneBufferChunked` never read them — dot
+  radius came only from LPI/DPI. Now threaded through as real `sizeFactor`/
+  `amountPct` parameters (`readHalftoneSizeFactor()`/`readHalftoneAmountPct()`
+  in `engines/halftone.js`), consumed by `writeHalftonePreview`/
+  `writeHalftoneFinal`. Missing/empty values default to the old behaviour
+  (size ×1, amount 100%), so nothing regresses.
+- **White Ink's "Highlight Boost" (`#wHl`) was dead** — `buildWhiteInkPipeline()`
+  never read it. Now applies a real brightness lift to the white layer.
+- **DTG "Printer" and DTF "Film Type" chips were decorative** — selecting
+  Epson/Brother/Kornit or Standard/Matte/Soft/Stretch changed nothing.
+  `DTG_PRINTER_PROFILES`/`DTF_FILM_PROFILES` (`engines/print.js`) now apply
+  real per-profile multipliers to the ink/white/detail/colour/sharpen sliders.
+- **`setSlider()` label/value desync.** Assigning a range input's `.value`
+  outside its `min`/`max` silently clamps in the browser, but the adjacent
+  `-V` label was set from the raw, un-clamped argument — so a preset like
+  "White Cotton" (`wDensity: 0`, slider `min="50"`) showed "0" while the
+  slider (and therefore every engine read of it) was actually 50. The label
+  is now set from the post-clamp `el.value`.
+- **Removed the non-functional Basic/Advanced mode toggle.** `initModeToggle()`
+  only flipped its own button's CSS class — no CSS rule or JS anywhere hid or
+  revealed anything based on it.
+- Deleted `ensureSource()`/`buildPreview()` in `core/preview.js` — dead code
+  since the v5.2.7 "FIX 1.5" unified them into `refreshPreview()`; nothing
+  called the old pair anymore.
+
+### Tests
+
+- `test-suite.js` unchanged in count (42 tests) but re-verified green — the
+  new `sizeFactor`/`amountPct` params default safely when absent from the
+  suite's DOM stub, so the existing functional halftone test still asserts
+  real ink is written.
+
 ## v5.2.8 — Extract inline CSS; kept `<script>` tags as classic scripts (not modules)
 
 `index.html` was ~50KB. Checked what was actually in it before assuming: one `<style>`

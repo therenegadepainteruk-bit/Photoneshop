@@ -1,4 +1,4 @@
-# Photoneshop v5.2.8
+# Photoneshop v5.3.0
 
 Photoshop UXP plugin for DTF / DTG / screen-print garment workflows.
 
@@ -63,11 +63,34 @@ Folder-copy installs do not work; UXP requires sideloading via UDT.
 | Large-image path                                                 | Verified band-chunked path in `computeHalftoneBufferChunked`; single output allocation, practical ceiling ~100 MP |
 | Tiled renderer (`engines/halftone-tiled.js`)                     | **Experimental, unwired.** Real tile math is unit-tested; `applyHalftoneTiled` throws (no real pixel I/O yet)     |
 | `core/errors.js` safe wrappers (`safeGetPixels`/`safePutPixels`) | Mock placeholders, **not used by any active path** (halftone uses `window.imaging` directly)                      |
-| Separation tab                                                   | Stub (trapping/choke planned)                                                                                     |
+| Screen Studio tab (was "Separation")                             | **Working** — channel split + simultaneous per-channel halftone; advanced spread/vector crop marks planned        |
+| DT Studio tab (was "DTG" + "DTF")                                | **Working** — combined DTG/DTF optimisation with an opt-in halftone-screen finishing step (real pixel renderer)   |
 | Garment Preview tab                                              | Stub                                                                                                              |
-| UI                                                               | 15 tabs                                                                                                           |
+| UI                                                               | 14 tabs                                                                                                           |
 
 See `CHANGELOG.md` and `INTEGRATION-REPORT-v5.2.1.md` for detail.
+
+## v5.3.0 note
+
+Restructured two tabs and fixed several controls that looked functional but weren't:
+
+- **DT Studio** replaces the separate DTG and DTF tabs — a Mode chip switches
+  between them, and a new "Halftone Screen" toggle runs the real pixel-based
+  halftone renderer (the same one the Halftone tab uses) on the flattened,
+  already-optimised output.
+- **Screen Studio** replaces "Separation" (same engine — channel splitting with
+  simultaneous per-channel halftone — just renamed to match how it's actually used).
+- Fixed: Design Studio (tab 2) was silently baking an 8px round-dot halftone into
+  every apply, because its pipeline read the Halftone tab's Amount/Dot Size/Angle
+  sliders by DOM id with no way to turn it off from Design Studio itself. Removed.
+- Fixed: the Halftone tab's "Amount" and "Dot Size" sliders now actually affect
+  the render (previously read by nothing).
+- Fixed: White Ink's "Highlight Boost" slider, and DT Studio's printer/film chips,
+  were decorative — now applied as real adjustments.
+- Fixed: `setSlider()` could show a label that didn't match the slider's actual
+  (browser-clamped) value when a preset requested an out-of-range number.
+- Removed the non-functional Basic/Advanced mode toggle (changed only its own
+  button state; nothing in the plugin ever read it).
 
 ## v5.2.2 note
 

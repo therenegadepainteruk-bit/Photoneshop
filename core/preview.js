@@ -5,17 +5,25 @@
  * this was the root cause of unreliable live preview across all tabs.
  */
 
-let EDIT_PANES = { 2: true, 3: true, 6: true, 9: true, 10: true };
-// Tab 2=Design Studio, 3=Halftone, 6=White Ink, 9=DTG, 10=DTF — all live-preview tabs.
-const TAB_GROUP = { 3: "HalftoneDots", 6: "WhiteInkUnderbase", 9: "DTGOptimise", 10: "DTFOptimise" };
+let EDIT_PANES = { 2: true, 3: true, 6: true, 9: true };
+// Tab 2=Design Studio, 3=Halftone, 6=White Ink, 9=DT Studio (DTG+DTF) — all live-preview tabs.
+const TAB_GROUP = { 3: "HalftoneDots", 6: "WhiteInkUnderbase" };
 // tab 2 (Design Studio) uses effectGroupName() below since it covers 3 sub-effects.
+// tab 9 (DT Studio) group name depends on its DTG/DTF sub-mode — see currentGroupName().
 
 // NOTE: tab 3 (Halftone) is NOT in this map — it's computed via direct pixel
 // I/O (engines/halftone.js writeHalftoneToLayer), not a batchPlay command array,
-// so it's special-cased in buildPreview()/applyResult() below instead.
+// so it's special-cased in refreshPreview()/applyResult() below instead.
 function currentPipeline() {
-  const map = { 2: buildPipeline, 6: buildWhiteInkPipeline, 9: buildDTGPipeline, 10: buildDTFPipeline };
+  const map = { 2: buildPipeline, 6: buildWhiteInkPipeline, 9: buildDTPipeline };
   return (map[_currentTab] || buildPipeline)();
+}
+
+// tab 9 (DT Studio)'s group name depends on getDTMode() (engines/print.js),
+// not a static tab-number lookup like every other live-preview tab.
+function currentGroupName() {
+  if (_currentTab === 9) return getDTMode() === "dtf" ? "DTFOptimise" : "DTGOptimise";
+  return TAB_GROUP[_currentTab] || effectGroupName();
 }
 
 let _currentTab = 2;
@@ -73,64 +81,6 @@ function clearPreviewTimer() {
     clearInterval(_previewTimer);
     _previewTimer = null;
   }
-}
-
-async function ensureSource() {
-  if (_sourceReady && _sourceId != null) return;
-  _tonalWarningShown = false; // allow the halftone tonal-variation warning to show again for a fresh session
-  await modal("Photoneshop: snapshot", async function () {
-    _targetDocId = window.app.activeDocument ? window.app.activeDocument.id : null;
-    _sourceId = await bpCreateLayer([{ _obj: "mergeVisible", duplicate: true }]);
-    if (_sourceId == null) throw new Error("Could not create source snapshot");
-    await bp([
-      { _obj: "set", _target: [{ _ref: "layer", _id: _sourceId }], to: { _obj: "layer", name: "Photoneshop Source" } },
-    ]);
-    await bp([{ _obj: "hide", null: [{ _ref: "layer", _id: _sourceId }] }]).catch(function () {});
-  });
-  _sourceReady = true;
-}
-
-async function buildPreview(myGen) {
-  await modal("Photoneshop: preview", async function () {
-    if (!docStillValid()) {
-      throw new Error("Active document changed during preview");
-    }
-    if (isRenderStale(myGen)) return; // superseded while we were still snapshotting
-    if (_previewId != null) {
-      await bp([{ _obj: "delete", _target: [{ _ref: "layer", _id: _previewId }] }]).catch(function () {});
-      _previewId = null;
-    }
-    _previewId = await bpCreateLayer([
-      { _obj: "duplicate", _target: [{ _ref: "layer", _id: _sourceId }], name: "Photoneshop Preview" },
-    ]);
-    if (_previewId == null) throw new Error("Could not create preview layer");
-    if (isRenderStale(myGen)) return; // superseded mid-duplicate
-    await bp([{ _obj: "show", null: [{ _ref: "layer", _id: _previewId }] }]).catch(function () {});
-    await bp([{ _obj: "select", _target: [{ _ref: "layer", _id: _previewId }], makeVisible: true }]).catch(
-      function () {}
-    );
-    await bp([
-      {
-        _obj: "move",
-        _target: [{ _ref: "layer", _id: _previewId }],
-        to: { _ref: "layer", _enum: "ordinal", _value: "front" },
-      },
-    ]).catch(function () {});
-    if (isRenderStale(myGen)) return; // superseded before the (potentially slow) write stage
-    if (_currentTab === 3) {
-      let v = await writeHalftoneToLayer(_previewId, myGen); // engines/halftone.js — checks staleness again right before its own putPixels
-      if (v && !v.hasVariation && !_tonalWarningShown) {
-        _tonalWarningShown = true;
-        setStatus(
-          "Artwork is mostly flat/binary \u2014 halftone will look like a solid fill. Add tone variation first for visible dots.",
-          "warning"
-        );
-      }
-    } else {
-      if (!isRenderStale(myGen)) await bp(currentPipeline());
-    }
-  });
-  _previewActive = true;
 }
 
 async function refreshPreview() {
@@ -201,6 +151,11 @@ async function refreshPreview() {
         }
       } else {
         if (!isRenderStale(myGen)) await bp(currentPipeline());
+        // DT Studio's optional halftone-screen step: same real pixel-based
+        // renderer as tab 3, applied on top of the DTG/DTF live preview layer.
+        if (_currentTab === 9 && chk("dtHalftone") && !isRenderStale(myGen)) {
+          await writeHalftoneToLayer(_previewId, myGen);
+        }
       }
     });
     _previewActive = true;
@@ -286,18 +241,20 @@ function resultLayerName() {
     case 6:
       return "Underbase " + val("wDensity") + "%";
     case 9: {
+      // DT Studio — DTG + DTF combined (engines/print.js getDTMode()), plus an
+      // optional halftone-screen step reusing the Halftone tab's LPI/Angle.
       let parts = [];
-      if (num("dtgInk") > 0) parts.push("Ink -" + val("dtgInk") + "%");
-      if (num("dtgWhite") > 0) parts.push("White +" + val("dtgWhite") + "%");
-      if (num("dtgDetail") > 0) parts.push("Detail +" + val("dtgDetail") + "%");
-      return parts.length ? parts.join(", ") : "DTG Optimised";
-    }
-    case 10: {
-      let parts = [];
-      if (num("dtfCol") > 0) parts.push("Colour +" + val("dtfCol") + "%");
-      if (num("dtfInk") > 0) parts.push("Ink -" + val("dtfInk") + "%");
-      if (num("dtfSharp") > 0) parts.push("Sharpen +" + val("dtfSharp") + "%");
-      return parts.length ? parts.join(", ") : "DTF Optimised";
+      if (getDTMode() === "dtf") {
+        if (num("dtfCol") > 0) parts.push("Colour +" + val("dtfCol") + "%");
+        if (num("dtfInk") > 0) parts.push("Ink -" + val("dtfInk") + "%");
+        if (num("dtfSharp") > 0) parts.push("Sharpen +" + val("dtfSharp") + "%");
+      } else {
+        if (num("dtgInk") > 0) parts.push("Ink -" + val("dtgInk") + "%");
+        if (num("dtgWhite") > 0) parts.push("White +" + val("dtgWhite") + "%");
+        if (num("dtgDetail") > 0) parts.push("Detail +" + val("dtgDetail") + "%");
+      }
+      if (chk("dtHalftone")) parts.push(val("lpi") + "lpi Halftone");
+      return parts.length ? parts.join(", ") : getDTMode() === "dtf" ? "DTF Optimised" : "DTG Optimised";
     }
     default:
       return effectGroupName().replace("DesignStudio", "") || "Result";
@@ -310,7 +267,7 @@ async function applyResult() {
     setStatus("Applying…", "info");
     const myGen = bumpRenderGen(); // signal any in-flight preview tick that it's now superseded
     await waitForRenderLock(); // don't touch the layer while a render is still mid-write
-    let groupName = TAB_GROUP[_currentTab] || effectGroupName();
+    let groupName = currentGroupName();
     let layerName = resultLayerName();
     if (!_previewActive) {
       await modal("Photoneshop: apply", async function () {
@@ -320,6 +277,7 @@ async function applyResult() {
           await writeHalftoneFinal(id, myGen);
         } else {
           await bp(currentPipeline());
+          if (_currentTab === 9 && chk("dtHalftone")) await writeHalftoneFinal(id, myGen);
         }
         await bp([{ _obj: "select", _target: [{ _ref: "layer", _id: id }] }]).catch(function () {});
         await groupSelectedInto(groupName);
@@ -328,7 +286,9 @@ async function applyResult() {
       await modal("Photoneshop: commit", async function () {
         if (_currentTab === 3) {
           await writeHalftoneFinal(_previewId, myGen);
-        } // upgrade fast preview -> full quality
+        } else if (_currentTab === 9 && chk("dtHalftone")) {
+          await writeHalftoneFinal(_previewId, myGen); // upgrade fast live preview -> full quality
+        }
         await bp([
           { _obj: "set", _target: [{ _ref: "layer", _id: _previewId }], to: { _obj: "layer", name: layerName } },
         ]);
