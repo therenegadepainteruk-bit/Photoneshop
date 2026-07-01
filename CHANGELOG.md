@@ -1,5 +1,117 @@
 # Changelog
 
+## v5.4.7 — Full refactor: dead code, duplication, naming, comments, documentation
+
+A maintainability pass across the whole codebase — no processing algorithm,
+Photoshop API sequence, or UI behaviour changed. Verified after every
+individual change via `npm run format:check`, `npm run lint`, and
+`npm test` (80/80 passing throughout, unmodified).
+
+### Removed — dead code and obsolete helpers
+
+- `core/errors.js` — `safeGetPixels`/`safePutPixels`/`safeReadLayerPixels`/
+  `safeWriteLayerPixels`/`validateDocument`/`logError`: mock stubs (each
+  had a `// TODO: Implement actual ... when PS API available` and returned
+  fake data) that were never called by any real code path — confirmed by
+  grep across the whole repo, and already flagged in README as "not used by
+  any active path." `PhotoneshopError` (the one thing this file exports that
+  IS used, at `engines/halftone.js`'s one real call site) is untouched.
+  212 lines → 49.
+- `core/validation.js` — `getFirstFailure()` (declared, exported, zero
+  references anywhere) and the `fixAction` closures on `validateRGBMode()`/
+  `validateLayerUnlocked()` (each just a `console.log` placeholder behind a
+  `// TODO`, never invoked — `report.results[x].fixAction` is never called
+  anywhere). `canAutoFix`/`fixSuggestion` are kept — `fixSuggestion` is
+  genuinely read by `formatValidationReport()`, and `canAutoFix` is
+  meaningful metadata even though nothing branches on it yet.
+- `core/history.js` — `getLayerTarget()` (declared, exported, zero
+  references — `_layerTarget` is read directly by `stampLayer()` instead).
+- Root `index.js` — an explicit "legacy stub, no longer used" (its own
+  header comment said so); not referenced by `index.html`, only by
+  `package.json`'s now-removed `main` field.
+
+### Removed — duplication
+
+- `engines/print.js` — `exportDTG()`/`exportDTF()` were byte-for-byte
+  identical batchPlay sequences (duplicate document → mergeVisible → save
+  PNG → close), differing only in a handful of strings. Extracted
+  `exportFlatPNG(cfg)`; `exportDTG`/`exportDTF` are now two three-line
+  callers passing the exact same strings each used before, so every status
+  message, modal name, and exported filename suffix is unchanged.
+
+### Renamed — naming consistency
+
+- `core/history.js` — `TAB_GROUPS` → `SOLO_GROUP_NAMES` (also `let` → `const`,
+  matching `HISTORY_CAP` next to it — never reassigned). Only referenced
+  within this one file (`toggleSolo()`); no cross-file impact. The old name
+  read as a generic "list of tabs," when what it actually is is the list of
+  layer-group names the footer's Solo button recognises as a target —
+  distinct from, and previously easy to confuse with, `core/preview.js`'s
+  unrelated `TAB_GROUP` (a tab-number → group-name lookup for live preview).
+
+### Comments — removed internal fix-tracking references
+
+Removed 22 `// FIX 1.2:`/`// FIX 2.6:`-style comments (across `core/api.js`,
+`core/preview.js`, `core/history.js`, `core/diagnostics.js`,
+`engines/halftone.js`, `engines/halftone-tiled.js`, `ui/panels.js`) and 4
+`Solves CONCERN #N` module-header references (`core/memory.js`,
+`core/validation.js`, `core/benchmark.js`, `engines/halftone-tiled.js`) —
+internal fix/concern numbers from some external tracking list a reader of
+this code has no access to, exactly the kind of comment this project's own
+stated convention (this CHANGELOG's own commit style, and every comment
+written this session) avoids: explain the WHY for a reader encountering the
+code fresh, not a pointer to "fix #2.6." Every removed tag's substantive
+explanation was kept and rewritten to stand on its own.
+
+### Documentation
+
+- `ARCHITECTURE.md` — fixed `core/errors.js`'s documented API, which showed
+  an object-style `new PhotoneshopError({operation, details, ...})`
+  constructor that was never real (the actual, tested constructor is
+  positional: `new PhotoneshopError(operation, details, cause)`). Rewrote
+  the "Integration Checklist" section, which claimed "Errors module wraps
+  all PS API calls" (false — one call site), "Validation gates all render
+  operations" (false — warn-only), and "Halftone-tiled auto-selected for
+  > 16MP" (false — unwired, `applyHalftoneTiled` throws), plus a stale
+  > "25 unit tests / 10 integration tests" count. Retitled from "Photoneshop
+  > v5.2 Architecture" (stale — this file documents the current architecture,
+  > not a snapshot of v5.2) and removed the stale version/date footer.
+- `README.md` — removed the Status-table row for the now-deleted
+  `safeGetPixels`/`safePutPixels` mocks, and a reference to
+  `INTEGRATION-REPORT-v5.2.1.md`, a file that does not exist in this repo
+  (confirmed — the only reference to it, now removed, rather than
+  fabricating a document to match).
+- Module headers (`core/memory.js`, `core/validation.js`,
+  `core/benchmark.js`, `engines/halftone-tiled.js`) now say plainly which
+  of their exports are wired into the real halftone path versus real,
+  tested, but not currently called by anything (the memory pool, the
+  benchmark-recording layer beyond the `Benchmark` class itself) — matching
+  this project's established "honest status" convention instead of leaving
+  that implicit.
+
+### Reviewed and left unchanged
+
+- Folder structure (`core/`, `engines/`, `ai/`, `presets/`, `ui/`) — every
+  file's category is coherent with what it does; moving files means
+  simultaneously updating `index.html`'s script tags, `core/init-guard.js`,
+  `test/helpers/vm-loader.js`, and `ARCHITECTURE.md` with zero live-Photoshop
+  test able to catch a mistyped path, for a purely cosmetic reorganisation —
+  not a good risk/reward trade for a refactor with "no functional changes"
+  as a hard requirement.
+- `core/memory.js`'s `allocateBuffer`/`releaseBuffer` (buffer pooling) and
+  most of `core/benchmark.js` (`startRecording`/`benchmarkFn`/
+  `exportBenchmarks`/`formatBenchmarks`) — real, working, individually
+  tested code that simply isn't wired into the halftone/separation engines
+  (which allocate buffers directly). Different in kind from the mock `safe*`
+  stubs removed above: this is functional, tested infrastructure, not inert
+  placeholder code, so removing it would be removing a working capability
+  rather than dead code.
+- Widely-used short names (`bp`, `modal`, etc.) — renaming for cosmetic
+  consistency would touch 100+ call sites across every file for zero
+  behavioural benefit; not a safe trade under "no functional changes."
+- Every image-processing algorithm, Photoshop API call sequence, and UI
+  control — untouched, as required.
+
 ## v5.4.6 — Native storage for UI state, preferences, and recent folders
 
 Reviewed all plugin storage. Presets (`presets/index.js`) already used the

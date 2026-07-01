@@ -1,11 +1,16 @@
 /**
  * core/memory.js — Memory manager for large image operations
  *
- * Solves CONCERN #2 (No dedicated memory manager):
  * - Pre-flight RAM estimation (fail early, not during allocation)
  * - Buffer pooling (reuse common sizes, reduce GC pressure)
  * - Peak memory tracking (detect regression)
  * - Safe allocation with context-rich errors
+ *
+ * estimateAvailableRAM() (used by core/validation.js) and getMemoryStats()
+ * (used by core/benchmark.js) are the two functions wired into the active
+ * halftone path; allocateBuffer()/releaseBuffer()'s pooling is real, tested
+ * infrastructure not currently called by any engine (they allocate buffers
+ * directly) — kept as-is rather than wired in speculatively.
  */
 
 const MEMORY_POOL_SIZES = [

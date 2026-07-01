@@ -1,4 +1,8 @@
-# Photoneshop v5.2 Architecture
+# Photoneshop Architecture
+
+Module dependency graph and cross-file API contracts, updated alongside the
+codebase. For a dated history of individual changes, see `CHANGELOG.md`; for
+current feature/reliability status, see README's "Status (honest)" table.
 
 ## Stability Improvements (v5.0 → v5.2)
 
@@ -117,26 +121,17 @@ try {
 
 ```javascript
 window.PhotoneshopErrors = {
-  PhotoneshopError,                 // class extending Error
-  safeGetPixels(layer),             // Wraps imaging.getPixels with context
-  safePutPixels(layer, pixels),     // Wraps imaging.putPixels with validation
-  safeReadLayerPixels(layer),       // Wraps readLayerPixels
-  safeWriteLayerPixels(layer, pixels, w, h),
-  validateDocument(doc, operation), // Pre-flight checks
-  logError(err)                      // Formatted console.error
+  PhotoneshopError, // class extending Error — the only export; see below
 };
 ```
 
-**Error Structure:**
+**Error Structure** (real, positional constructor — this is what's actually used at the halftone integration's one call site, `engines/halftone.js` `applyHalftoneWithArch()`):
 
 ```javascript
-new PhotoneshopErrors.PhotoneshopError({
-  operation: "halftone-apply",
-  details: "Buffer size mismatch",
-  cause: originalError,
-  timestamp: ISO8601,
-  layerState: { name, width, height, depth, opacity },
-});
+const err = new PhotoneshopErrors.PhotoneshopError(operation, details, cause).withLayerState(layer);
+// err.operation, err.details, err.cause, err.timestamp (ISO8601), err.layerState
+// { name, kind, visible, opacity, blendMode } once withLayerState() is called
+err.toString(); // human-readable, includes layer state + cause + timestamp if present
 ```
 
 ### `core/validation.js`
@@ -360,30 +355,29 @@ const regressions = window.PhotoneshopBenchmark.detectRegressions(baseline, curr
 
 ---
 
-## Integration Checklist
+## Integration Checklist (honest, current — see README "Status (honest)" for the full picture)
 
 - ✅ Memory module loaded first (used by others)
-- ✅ Errors module wraps all PS API calls
-- ✅ Validation gates all render operations
-- ✅ Benchmark decorates key functions
-- ✅ Halftone-tiled auto-selected for > 16MP
+- ⚠️ Errors module (`PhotoneshopError`) is used at exactly one call site
+  (`engines/halftone.js` `applyHalftoneWithArch()`'s catch block) — not a
+  blanket wrapper around every PS API call.
+- ⚠️ Validation (`runAllChecks`) runs before the halftone render too, but is
+  **warn-only** (logs to console, does not block the render) — it does not
+  gate every render operation.
+- ✅ Benchmark's `Benchmark` class times the halftone render
+  (`applyHalftoneWithArch`); the rest of `core/benchmark.js`
+  (`startRecording`/`benchmarkFn`/`exportBenchmarks`/`formatBenchmarks`) is
+  tested, working infrastructure not currently wired into any UI action.
+- ❌ Halftone-tiled is **not** auto-selected for large images — it's
+  experimental and unwired (`applyHalftoneTiled` throws); large documents use
+  the band-chunked path in `computeHalftoneBufferChunked` instead.
 - ✅ No circular dependencies
 - ✅ All module APIs on `window.Photoneshop*` namespaces
-- ✅ 25 unit tests pass
-- ✅ 10 integration tests pass
+- ✅ Real test suite, loading actual shipped source into a Node `vm` — see
+  README's "Tests" section for the current count (grows with each change).
 
 ---
 
-## Future Enhancements
-
-1. **Storage** — Save/load benchmarks to IndexedDB
-2. **Streaming** — WebWorker-based tile processing (parallel rendering)
-3. **Adaptive quality** — Reduce LPI on huge images if time budget exceeded
-4. **GPU acceleration** — WebGL halftone for 4K+ images
-5. **Plugin profiler** — Built-in memory/CPU flame graph
-
----
-
-**Architecture version:** 5.2  
-**Last updated:** June 30, 2026  
-**Stability:** 8.9/10
+See `CHANGELOG.md` for the full, dated history of every change (this file
+covers module APIs and cross-file contracts; CHANGELOG covers what changed
+and why, version by version).

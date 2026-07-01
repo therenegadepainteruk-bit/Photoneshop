@@ -124,8 +124,8 @@ function guard() {
     setStatus("Open an image in Photoshop first", "warning");
     return false;
   }
-  // FIX 2.4 (corrected): UXP Photoshop exposes colour mode as doc.mode
-  // (e.g. "RGBColorMode"), NOT doc.colorModel. Reading colorModel returned
+  // UXP Photoshop exposes colour mode as doc.mode (e.g. "RGBColorMode"),
+  // NOT doc.colorModel. Reading colorModel returned
   // undefined, so this guard previously blocked EVERY tool on real documents —
   // RGB ones included. Read doc.mode (with colorModel as a defensive fallback),
   // normalise to a string, and block only when the mode is readable AND clearly
@@ -236,7 +236,7 @@ function opUnsharp(amt, r, thr) {
   };
 }
 
-// ---- write-in-progress flag (FIX 1.2): shared across modules ----
+// ---- write-in-progress flag: shared across modules ----
 // Tracks whether a putPixels operation is in flight, preventing race conditions
 let _writeInProgress = false;
 function setWriteInProgress(val) {

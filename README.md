@@ -1,4 +1,4 @@
-# Photoneshop v5.4.6
+# Photoneshop v5.4.7
 
 Photoshop UXP plugin for DTF / DTG / screen-print garment workflows.
 
@@ -66,24 +66,42 @@ Folder-copy installs do not work; UXP requires sideloading via UDT.
 
 ## Status (honest)
 
-| Area                                                             | State                                                                                                                                                                                                              |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Apply halftone (core feature)                                    | **Working**, instrumented, regression-guarded                                                                                                                                                                      |
-| Large-image path                                                 | Verified band-chunked path in `computeHalftoneBufferChunked`; single output allocation, practical ceiling ~100 MP                                                                                                  |
-| Tiled renderer (`engines/halftone-tiled.js`)                     | **Experimental, unwired.** Real tile math is unit-tested; `applyHalftoneTiled` throws (no real pixel I/O yet)                                                                                                      |
-| `core/errors.js` safe wrappers (`safeGetPixels`/`safePutPixels`) | Mock placeholders, **not used by any active path** (halftone uses `window.imaging` directly)                                                                                                                       |
-| Screen Studio tab (was "Separation")                             | **Working** — channel split + simultaneous per-channel halftone; advanced spread/vector crop marks planned                                                                                                         |
-| DT Studio tab (was "DTG" + "DTF")                                | **Working** — combined DTG/DTF optimisation with an opt-in halftone-screen finishing step (real pixel renderer)                                                                                                    |
-| Garment Preview tab                                              | Stub                                                                                                                                                                                                               |
-| UI                                                               | 14 tabs, native UXP Spectrum elements (`sp-*`) — **not yet verified in a live Photoshop panel**, see v5.4.0 note                                                                                                   |
-| Photoshop-op wrapping (`executeAsModal`)                         | Every document-modifying action audited; all wrap in one atomic modal scope, live-preview races guarded                                                                                                            |
-| Photoshop-op batching (`batchPlay`)                              | Redundant sequential calls folded into single multi-descriptor calls where safe (see v5.4.2 note)                                                                                                                  |
-| Native event listeners (`core/events.js`)                        | Coverage/fix-availability/RGB-CMYK readouts sync on PS select/historyStateChanged/open/close — see v5.4.3 note, **not yet verified in a live Photoshop panel**                                                     |
-| Pixel sampling (Colours/Screen Studio colour detection)          | Reads the composite directly via the Imaging API — no throwaway full-resolution stamp layer (see v5.4.4 note)                                                                                                      |
-| Undo / History panel                                             | Live-preview sessions coalesce to one named entry ("Apply Threshold", "Generate Halftone", …) instead of one per drag tick — see v5.4.5 note, **highest-risk change to verify live, see note**                     |
-| Storage (presets, UI state, recent folders)                      | Presets: unchanged native `presets.json` file. UI state (last tab, layer target, DT mode, preset category) and per-export "recent folder" memory now use native `localStorage`/persistent tokens — see v5.4.6 note |
+| Area                                                    | State                                                                                                                                                                                                              |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Apply halftone (core feature)                           | **Working**, instrumented, regression-guarded                                                                                                                                                                      |
+| Large-image path                                        | Verified band-chunked path in `computeHalftoneBufferChunked`; single output allocation, practical ceiling ~100 MP                                                                                                  |
+| Tiled renderer (`engines/halftone-tiled.js`)            | **Experimental, unwired.** Real tile math is unit-tested; `applyHalftoneTiled` throws (no real pixel I/O yet)                                                                                                      |
+| Screen Studio tab (was "Separation")                    | **Working** — channel split + simultaneous per-channel halftone; advanced spread/vector crop marks planned                                                                                                         |
+| DT Studio tab (was "DTG" + "DTF")                       | **Working** — combined DTG/DTF optimisation with an opt-in halftone-screen finishing step (real pixel renderer)                                                                                                    |
+| Garment Preview tab                                     | Stub                                                                                                                                                                                                               |
+| UI                                                      | 14 tabs, native UXP Spectrum elements (`sp-*`) — **not yet verified in a live Photoshop panel**, see v5.4.0 note                                                                                                   |
+| Photoshop-op wrapping (`executeAsModal`)                | Every document-modifying action audited; all wrap in one atomic modal scope, live-preview races guarded                                                                                                            |
+| Photoshop-op batching (`batchPlay`)                     | Redundant sequential calls folded into single multi-descriptor calls where safe (see v5.4.2 note)                                                                                                                  |
+| Native event listeners (`core/events.js`)               | Coverage/fix-availability/RGB-CMYK readouts sync on PS select/historyStateChanged/open/close — see v5.4.3 note, **not yet verified in a live Photoshop panel**                                                     |
+| Pixel sampling (Colours/Screen Studio colour detection) | Reads the composite directly via the Imaging API — no throwaway full-resolution stamp layer (see v5.4.4 note)                                                                                                      |
+| Undo / History panel                                    | Live-preview sessions coalesce to one named entry ("Apply Threshold", "Generate Halftone", …) instead of one per drag tick — see v5.4.5 note, **highest-risk change to verify live, see note**                     |
+| Storage (presets, UI state, recent folders)             | Presets: unchanged native `presets.json` file. UI state (last tab, layer target, DT mode, preset category) and per-export "recent folder" memory now use native `localStorage`/persistent tokens — see v5.4.6 note |
 
-See `CHANGELOG.md` and `INTEGRATION-REPORT-v5.2.1.md` for detail.
+See `CHANGELOG.md` for the full, dated history of every change.
+
+## v5.4.7 note
+
+A maintainability refactor — no algorithm, Photoshop API sequence, or UI
+behaviour changed (verified via the full test/lint/format suite after every
+step). Removed dead code (`core/errors.js`'s mock `safe*`/`validateDocument`/
+`logError` stubs, `core/validation.js`'s unused `getFirstFailure()` and
+never-invoked `fixAction` placeholders, `core/history.js`'s unused
+`getLayerTarget()`, and the legacy root `index.js` stub); removed one real
+duplication (`exportDTG()`/`exportDTF()` were byte-for-byte identical aside
+from a few strings, now share `exportFlatPNG()`); renamed one confusingly-named
+constant (`TAB_GROUPS` → `SOLO_GROUP_NAMES`); removed 26 comments that
+referenced an internal fix/concern-tracking numbering scheme meaningless to a
+fresh reader, rewriting each as a real explanation; and fixed several stale/
+inaccurate spots in `ARCHITECTURE.md` and this README (a documented
+`PhotoneshopError` constructor shape that was never real, an "Integration
+Checklist" with three false claims, and a reference to a report file that
+doesn't exist in this repo). See `CHANGELOG.md` for the full list, including
+what was deliberately reviewed and left unchanged.
 
 ## v5.4.6 note
 

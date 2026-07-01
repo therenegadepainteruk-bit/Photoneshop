@@ -8,7 +8,7 @@
 // startup restore of the last-active tab (core/storage.js), so there is
 // only one place that knows how to activate a tab.
 function activateTab(n, tabsEl) {
-  clearPreviewTimer(); // FIX 2.2: Clear timer on tab switch to prevent accumulation
+  clearPreviewTimer(); // don't leave a debounced tick scheduled against the pane being left
   _currentTab = n; // defined in core/preview.js
   if (tabsEl) tabsEl.selected = String(n);
   document.querySelectorAll(".pane").forEach(function (x) {

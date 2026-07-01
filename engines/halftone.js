@@ -198,11 +198,13 @@ function computeHalftoneBuffer(
         oyi = Math.round(origY);
       if (oxi < 0 || oxi >= w || oyi < 0 || oyi >= h) continue;
       const p = (oyi * w + oxi) * comps;
-      // CRITICAL FIX 1.1: Validate buffer access before reading (prevents out-of-bounds crash)
+      // Bounds-check before reading — the inverse-rotated sample point can
+      // land just outside the buffer at cell edges, which would otherwise
+      // read out-of-bounds and crash.
       if (p + 3 >= srcBuf.length) continue;
       const a = comps >= 4 ? srcBuf[p + 3] : 255;
       if (a < 10) continue;
-      // Round tone to integer to prevent dot-radius jitter (fix 2.12)
+      // Round tone to an integer so floating-point jitter never nudges the dot radius.
       const tone = comps >= 3 ? Math.round(luminance(srcBuf[p], srcBuf[p + 1], srcBuf[p + 2])) : srcBuf[p];
       const dotR = (cellSize / 2) * maxRFactor * (1 - tone / 255) * amount;
       if (dotR <= 0) continue;
@@ -278,7 +280,8 @@ async function computeHalftoneBufferChunked(
     const bandH = padY1 - padY0;
     const bandSrc = new Uint8Array(w * bandH * comps);
     const srcSliceLen = padY1 * w * comps - padY0 * w * comps;
-    // FIX 2.1: Validate band buffer size before .set()
+    // Guard against a rounding/off-by-one in the band math writing past the
+    // end of bandSrc — fail loudly here rather than silently truncate.
     if (srcSliceLen > bandSrc.length) {
       throw new Error(
         `Chunked halftone: band buffer mismatch — source slice ${srcSliceLen} exceeds buffer ${bandSrc.length}`
@@ -302,7 +305,8 @@ async function computeHalftoneBufferChunked(
     );
     const sliceStart = (y0 - padY0) * w * 4,
       sliceLen = (y1 - y0) * w * 4;
-    // FIX: Also validate output slice
+    // Same guard on the other side of the copy — the slice written into the
+    // full-resolution output buffer.
     if (sliceStart + sliceLen > out.length) {
       throw new Error(
         `Chunked halftone: output buffer mismatch — slice ${sliceStart}+${sliceLen} exceeds ${out.length}`
@@ -317,7 +321,8 @@ async function computeHalftoneBufferChunked(
 }
 
 function upscaleNearest(buf, sw, sh, dw, dh) {
-  // FIX 2.7: Validate buffer size before processing
+  // A caller passing a buffer that doesn't match sw×sh would otherwise read
+  // garbage/out-of-bounds silently — fail loudly instead.
   const expectedSize = sw * sh * 4;
   if (buf.length !== expectedSize) {
     throw new Error(`upscaleNearest: buffer size mismatch. Expected ${expectedSize}, got ${buf.length}`);
@@ -347,7 +352,7 @@ function checkTonalVariation(buf, comps) {
   for (let i = 0; i < buf.length; i += comps) {
     const a = comps >= 4 ? buf[i + 3] : 255;
     if (a < 10) continue;
-    // FIX 2.12: Round tone to integer to prevent floating-point jitter affecting dot radius
+    // Round tone to an integer so floating-point jitter never nudges the dot radius.
     const g = comps >= 3 ? Math.round(luminance(buf[i], buf[i + 1], buf[i + 2])) : buf[i];
     sum += g;
     sumSq += g * g;
@@ -384,7 +389,8 @@ async function writeHalftonePreview(layerId, fullW, fullH, myGen) {
     sh = Math.max(1, Math.round(fullH * scale));
   const src = await readLayerPixels(layerId, { width: sw, height: sh });
 
-  // FIX 1.4: Validate that readLayerPixels returned expected dimensions
+  // getPixels' targetSize is a request, not a guarantee — confirm what came
+  // back actually matches before computing against it.
   if (src.w !== sw || src.h !== sh) {
     throw new Error(`Preview dimensions mismatch: expected ${sw}×${sh}, got ${src.w}×${src.h} from readLayerPixels`);
   }
@@ -393,7 +399,8 @@ async function writeHalftonePreview(layerId, fullW, fullH, myGen) {
   const angle = parseInt(val("htAngle"), 10) || 45;
   const lpi = parseInt(val("lpi"), 10) || 45;
   const dotGain = num("dotGain");
-  // FIX 2.8: Default to 300 DPI if resolution is undefined
+  // window.app.activeDocument.resolution can be undefined on a freshly
+  // created document — 300 is Photoshop's own default.
   const docResolution = window.app.activeDocument ? window.app.activeDocument.resolution || 300 : 300;
   const effectiveDPI = docResolution * scale; // scale DPI with the buffer so dots stay proportionally correct
   const ink = hexToRgb(val("htColor"));
@@ -429,7 +436,7 @@ async function writeHalftonePreview(layerId, fullW, fullH, myGen) {
     return variation;
   } // last check, right before the write
   try {
-    setWriteInProgress(true); // FIX 1.2: Track putPixels completion
+    setWriteInProgress(true); // lets waitForRenderLock() (core/preview.js) know a write is in flight
     await window.imaging.putPixels({
       layerID: layerId,
       imageData: imgData,
@@ -449,7 +456,8 @@ async function writeHalftoneFinal(layerId, myGen) {
   const angle = parseInt(val("htAngle"), 10) || 45;
   const lpi = parseInt(val("lpi"), 10) || 45;
   const dotGain = num("dotGain");
-  // FIX 2.8: Default to 300 DPI if resolution is undefined
+  // window.app.activeDocument.resolution can be undefined on a freshly
+  // created document — 300 is Photoshop's own default.
   const dpi = window.app.activeDocument ? window.app.activeDocument.resolution || 300 : 300;
   const ink = hexToRgb(val("htColor"));
   const sizeFactor = readHalftoneSizeFactor();

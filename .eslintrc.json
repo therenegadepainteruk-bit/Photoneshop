@@ -46,7 +46,6 @@
     "luminance": "readonly",
     "selectOne": "readonly",
     "recordAction": "readonly",
-    "getLayerTarget": "readonly",
     "setLayerTarget": "readonly",
     "undoLast": "readonly",
     "stampLayer": "readonly",

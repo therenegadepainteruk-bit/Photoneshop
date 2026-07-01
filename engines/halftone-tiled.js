@@ -1,15 +1,16 @@
 /**
- * engines/halftone-tiled.js — Tiled halftone rendering
+ * engines/halftone-tiled.js — Tiled halftone rendering (EXPERIMENTAL, UNWIRED)
  *
- * Solves CONCERN #1 (Halftone engine allocates entire buffer):
- * - Process 256×256 tiles instead of full image
- * - Max 50MB working memory (not 400MB)
- * - Emit progress per tile
- * - Write directly to document layer per tile
- * - Gracefully fall back if tile write fails
+ * Goal: process the image in 256×256 tiles (same cell-based halftone math as
+ * engines/halftone.js) instead of allocating a full-resolution buffer, so a
+ * huge document stays under ~50MB of working memory instead of hundreds.
  *
- * Uses same halftone math as engines/halftone.js (cell-based screening)
- * but streams results rather than accumulating in RAM.
+ * Current status: the tile math itself (computeHalftoneTile/tiledHalftoneRender)
+ * is real and unit-tested, but applyHalftoneTiled() — the piece that would
+ * read/write actual document pixels per tile — is not implemented and
+ * deliberately throws. Nothing in the UI calls this module; the real halftone
+ * engine (engines/halftone.js) instead uses a band-chunked full-resolution
+ * pass (computeHalftoneBufferChunked) for large documents.
  */
 
 const TILE_SIZE = 256; // 256×256 = 64KB tile (256×256×4 bytes)
@@ -53,7 +54,7 @@ function computeHalftoneTile(srcBuf, srcWidth, srcHeight, srcDepth, tileX, tileY
     for (let x = x0; x < x1; x++) {
       // Sample source pixel
       const srcIdx = (y * srcWidth + x) * srcDepth;
-      if (srcIdx + 3 >= srcBuf.length) continue; // FIX 1.1: bounds check
+      if (srcIdx + 3 >= srcBuf.length) continue; // out-of-bounds guard for edge tiles
 
       const a = srcDepth >= 4 ? srcBuf[srcIdx + 3] : 255;
       if (a < 10) continue;

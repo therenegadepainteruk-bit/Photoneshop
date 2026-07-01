@@ -451,50 +451,54 @@ async function exportScreen() {
   }
 }
 
-async function exportDTG() {
+// Shared by exportDTG()/exportDTF() — both duplicate the document, flatten,
+// save a PNG, and close it, differing only in the recent-folder kind,
+// filename suffix, and status text (kept as explicit config so each export's
+// wording stays exactly what it was before this was a shared helper).
+async function exportFlatPNG(cfg) {
   if (!guard()) return;
   try {
-    const folder = await resolveExportFolder("dtg");
+    const folder = await resolveExportFolder(cfg.kind);
     if (!folder) {
       setStatus("Export cancelled", "info");
       return;
     }
     const base = (window.app.activeDocument.name || "art").replace(/\.[^.]+$/, "").trim() || "untitled";
-    setStatus("Exporting DTG PNG…", "info");
-    await modal("DTG Export", async () => {
+    setStatus(cfg.exportingMsg, "info");
+    await modal(cfg.modalName, async () => {
       await bp([
-        { _obj: "duplicate", _target: [{ _ref: "document", _enum: "ordinal", _value: "first" }], name: base + "_dtg" },
+        {
+          _obj: "duplicate",
+          _target: [{ _ref: "document", _enum: "ordinal", _value: "first" }],
+          name: base + cfg.suffix,
+        },
       ]);
       await bp([{ _obj: "mergeVisible" }]).catch(() => {});
       await saveAsPNG(folder);
       await bp([{ _obj: "close", saving: { _enum: "yesNo", _value: "no" } }]).catch(() => {});
     });
-    setStatus("DTG flat alpha PNG exported", "success");
+    setStatus(cfg.doneMsg, "success");
   } catch (e) {
     setStatus("Error: " + e.message, "error");
   }
 }
 
+async function exportDTG() {
+  await exportFlatPNG({
+    kind: "dtg",
+    suffix: "_dtg",
+    modalName: "DTG Export",
+    exportingMsg: "Exporting DTG PNG…",
+    doneMsg: "DTG flat alpha PNG exported",
+  });
+}
+
 async function exportDTF() {
-  if (!guard()) return;
-  try {
-    const folder = await resolveExportFolder("dtf");
-    if (!folder) {
-      setStatus("Export cancelled", "info");
-      return;
-    }
-    const base = (window.app.activeDocument.name || "art").replace(/\.[^.]+$/, "").trim() || "untitled";
-    setStatus("Exporting DTF file…", "info");
-    await modal("DTF Export", async () => {
-      await bp([
-        { _obj: "duplicate", _target: [{ _ref: "document", _enum: "ordinal", _value: "first" }], name: base + "_dtf" },
-      ]);
-      await bp([{ _obj: "mergeVisible" }]).catch(() => {});
-      await saveAsPNG(folder);
-      await bp([{ _obj: "close", saving: { _enum: "yesNo", _value: "no" } }]).catch(() => {});
-    });
-    setStatus("DTF export complete", "success");
-  } catch (e) {
-    setStatus("Error: " + e.message, "error");
-  }
+  await exportFlatPNG({
+    kind: "dtf",
+    suffix: "_dtf",
+    modalName: "DTF Export",
+    exportingMsg: "Exporting DTF file…",
+    doneMsg: "DTF export complete",
+  });
 }

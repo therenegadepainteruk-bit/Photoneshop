@@ -6,9 +6,12 @@
 let _psHistory = [];
 let _soloGroup = null;
 let _layerTarget = "visible"; // "visible" | "active" | "selection"
-const HISTORY_CAP = 100; // FIX 2.6: Prevent unbounded history growth
+const HISTORY_CAP = 100; // caps _psHistory so a long session can't grow it unbounded
 
-let TAB_GROUPS = [
+// The layer-group names toggleSolo() recognises as a "target" to isolate —
+// every group name any Apply action can create (core/preview.js's
+// currentGroupName()/effectGroupName(), engines/*'s own group names).
+const SOLO_GROUP_NAMES = [
   "DesignStudio",
   "DesignStudioThreshold",
   "DesignStudioTone",
@@ -24,15 +27,12 @@ let TAB_GROUPS = [
 ];
 
 function recordAction(type, name, layerId) {
-  // FIX 2.3: Store layer ID instead of just name for reliable deletion on undo
+  // Stores the layer's ID (not just its name) so undoLast() can delete the
+  // right layer reliably even if Photoshop auto-renamed it on conflict.
   _psHistory.push({ type: type, name: name, _id: layerId || activeLayerId() });
-  // FIX 2.6: Cap history at 100 entries
   if (_psHistory.length > HISTORY_CAP) {
     _psHistory.shift();
   }
-}
-function getLayerTarget() {
-  return _layerTarget;
 }
 function setLayerTarget(t) {
   _layerTarget = t;
@@ -53,11 +53,13 @@ async function undoLast() {
     await modal("Photoneshop: undo", async function () {
       let doc = window.app.activeDocument;
       if (!doc) return;
-      // FIX 2.3: Delete by ID instead of name for reliability
+      // Delete by ID (reliable even after a Photoshop auto-rename); only
+      // fall back to matching by name if this entry has no ID at all —
+      // recordAction() couldn't resolve one because there was no active
+      // layer at the moment the action was recorded.
       if (last._id) {
         await bp([{ _obj: "delete", _target: [{ _ref: "layer", _id: last._id }] }]).catch(function () {});
       } else {
-        // Fallback for legacy history entries without ID
         let layers = doc.layers;
         for (let i = 0; i < layers.length; i++) {
           if (layers[i].name === last.name) {
@@ -104,7 +106,9 @@ async function groupSelectedInto(group, layerId) {
         break;
       }
     }
-    // FIX 2.9: Use explicit _id reference if layerId provided, otherwise use selection
+    // Prefer an explicit layer-ID reference over "the current selection" when
+    // the caller already knows which layer it means — more reliable than
+    // relying on selection state still being what the caller left it as.
     const targetRef = layerId
       ? { _ref: "layer", _id: layerId }
       : { _ref: "layer", _enum: "ordinal", _value: "targetEnum" };
@@ -149,7 +153,7 @@ async function toggleSolo() {
       let layers = doc.layers;
       let target = null;
       for (let i = 0; i < layers.length; i++) {
-        if (layers[i].selected && TAB_GROUPS.indexOf(layers[i].name) !== -1) {
+        if (layers[i].selected && SOLO_GROUP_NAMES.indexOf(layers[i].name) !== -1) {
           target = layers[i].name;
           break;
         }
@@ -218,7 +222,8 @@ async function updateCoverage() {
   let out = document.getElementById("coverageVal");
   if (!out || !hasDoc()) return;
   try {
-    // FIX 2.11: Validate activeLayer exists before calling getPixels
+    // getPixels() needs an active layer to read from — bail out to the "—"
+    // placeholder instead of letting it throw when there isn't one.
     let doc = window.app.activeDocument;
     if (!doc || !doc.activeLayer) {
       out.textContent = "—";

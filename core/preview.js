@@ -41,7 +41,6 @@ let _busy = false;
 // History entry instead of one per tick. Null whenever no session is open,
 // or on hosts where suspension isn't available (graceful no-op fallback).
 let _historySuspension = null;
-// FIX 1.2: _writeInProgress moved to core/api.js for sharing with halftone.js
 let _renderGen = 0; // monotonically increasing — every render claims one
 let _targetDocId = null; // the document this preview session belongs to
 const DEBOUNCE_MS = 130;
@@ -61,7 +60,8 @@ function isRenderStale(myGen) {
 // Waits for any in-flight render to finish before a caller (Apply/Cancel)
 // proceeds to touch the same layers. Bounded so a stuck render can't hang
 // the UI forever — proceeds anyway after the timeout, with a warning.
-// FIX 1.2: Also waits for in-flight putPixels to complete
+// getWriteInProgress() (core/api.js) covers the halftone engine's own
+// putPixels writes, which this module's own _busy flag doesn't see.
 async function waitForRenderLock(maxMs) {
   const start = Date.now();
   while ((_busy || getWriteInProgress()) && Date.now() - start < (maxMs || 4000)) {
@@ -82,7 +82,8 @@ function docStillValid() {
   return doc && (_targetDocId == null || doc.id === _targetDocId);
 }
 
-// FIX 2.2: Clear preview timer to prevent accumulation on tab switches
+// Clears the pending debounce timer so switching tabs (or cancelling) can't
+// leave a stale tick scheduled against the pane the user just left.
 function clearPreviewTimer() {
   if (_previewTimer) {
     clearTimeout(_previewTimer);
@@ -99,7 +100,9 @@ async function refreshPreview() {
   const myGen = bumpRenderGen();
   let failed = false;
   try {
-    // FIX 1.5: Merge ensureSource and buildPreview into a single modal call to prevent nesting
+    // Source-snapshot creation and preview-layer building share one modal
+    // scope — executeAsModal calls cannot nest, and this keeps every tick
+    // (and the session's history suspension, started inside it) atomic.
     await modal("Photoneshop: preview (unified)", async function (executionContext) {
       // Ensure source layer exists
       if (!_sourceReady || _sourceId == null) {
@@ -394,7 +397,7 @@ async function applyResult() {
 
 async function cancelPreview() {
   if (!_previewActive && !_sourceReady) return;
-  clearPreviewTimer(); // FIX 2.2: Clear timer on cancel
+  clearPreviewTimer();
   bumpRenderGen(); // supersede any in-flight render so it aborts before writing
   await waitForRenderLock(); // don't delete layers a render is still mid-write into
   await removePreview();

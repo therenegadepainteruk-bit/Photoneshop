@@ -1,14 +1,11 @@
 /**
  * core/validation.js — Pre-flight validation checklist
  *
- * Solves CONCERN #6 (Missing validation before rendering):
- * - RGB mode ✓
- * - Raster layer ✓
- * - Layer unlocked ✓
- * - Bit depth (8 or 16-bit) ✓
- * - RAM available ✓
- *
- * Returns detailed errors and auto-fix suggestions.
+ * Seven checks (document exists, RGB mode, layer exists, layer is raster,
+ * layer unlocked, bit depth, RAM available), each returning
+ * { pass, message, canAutoFix?, fixSuggestion? }. runAllChecks() runs all
+ * seven and is used by engines/halftone.js's applyHalftoneWithArch() as a
+ * warn-only pre-flight (logged to console, does not block the render).
  */
 
 const CHECKS = {
@@ -60,11 +57,6 @@ function validateRGBMode(doc) {
     message: `Document is in ${mode} mode. Photoneshop requires RGB.`,
     canAutoFix: true,
     fixSuggestion: "Image > Mode > RGB",
-    fixAction: async () => {
-      // TODO: Auto-convert via batchPlay
-      console.log("Would convert to RGB via Image > Mode > RGB");
-      return true;
-    },
   };
 }
 
@@ -121,11 +113,6 @@ function validateLayerUnlocked(layer) {
     message: "Layer is locked. Unlock the layer before operating.",
     canAutoFix: true,
     fixSuggestion: "Layer > Layer > Unlock Layer (or click lock icon)",
-    fixAction: async () => {
-      // TODO: Use batchPlay to unlock layer
-      console.log("Would unlock layer");
-      return true;
-    },
   };
 }
 
@@ -196,18 +183,6 @@ function runAllChecks(doc, layer, estimatedNeedMB = 100) {
 }
 
 /**
- * Get first failure reason (for user-facing error message).
- */
-function getFirstFailure(results) {
-  for (const [checkName, result] of Object.entries(results)) {
-    if (result.pass === false) {
-      return { check: checkName, ...result };
-    }
-  }
-  return null;
-}
-
-/**
  * Format validation report for user display.
  */
 function formatValidationReport(allPass, results) {
@@ -240,7 +215,6 @@ if (typeof window !== "undefined") {
     validateBitDepth,
     validateRAMAvailable,
     runAllChecks,
-    getFirstFailure,
     formatValidationReport,
   };
 }

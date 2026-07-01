@@ -318,7 +318,7 @@ async function diagTest4() {
     return true;
   } catch (e) {
     diagLog("TEST 4: FAILED \u2014 " + (e && e.message ? e.message : e));
-    await cleanupTestLayer(layerId); // FIX 1.6: Ensure cleanup on failure
+    await cleanupTestLayer(layerId); // only Test 4's SUCCESS path leaves the layer behind on purpose
     return false;
   }
 }

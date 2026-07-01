@@ -1,12 +1,13 @@
 /**
- * core/benchmark.js — Automatic performance benchmarking
+ * core/benchmark.js — Performance benchmarking
  *
- * Solves CONCERN #5 (Missing automatic benchmarking):
- * - Timer decorator on all major functions
- * - Track pixels/second throughput
- * - Memory peak & GC pauses
- * - Performance regression detection
- * - Exportable telemetry JSON
+ * - Benchmark: a single timed run (duration, pixels/sec throughput, memory
+ *   peak, GC pauses) — the one piece actually used, timing the halftone
+ *   render in engines/halftone.js's applyHalftoneWithArch().
+ * - benchmarkFn/startRecording/stopRecording/exportBenchmarks/
+ *   detectRegressions/formatBenchmarks: a recording/regression-detection
+ *   layer on top of Benchmark — real, tested, not currently wired into any
+ *   UI action.
  */
 
 class Benchmark {
