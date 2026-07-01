@@ -1,0 +1,40 @@
+{
+  "name": "photoneshop",
+  "version": "5.2.6",
+  "private": true,
+  "description": "Photoshop UXP plugin for DTF / DTG / screen-print garment workflows.",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test-suite.js",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/therenegadepainteruk-bit/Photoneshop.git"
+  },
+  "keywords": [
+    "photoshop",
+    "uxp",
+    "plugin",
+    "screen-print",
+    "dtf",
+    "dtg",
+    "garment",
+    "halftone"
+  ],
+  "author": "",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/therenegadepainteruk-bit/Photoneshop/issues"
+  },
+  "homepage": "https://github.com/therenegadepainteruk-bit/Photoneshop#readme",
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.1",
+    "prettier": "^3.9.4"
+  }
+}

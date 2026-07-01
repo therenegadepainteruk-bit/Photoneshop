@@ -1,4 +1,4 @@
-# Photoneshop v5.2.5
+# Photoneshop v5.2.6
 
 Photoshop UXP plugin for DTF / DTG / screen-print garment workflows.
 
@@ -23,7 +23,15 @@ architectural modules that genuinely operate on real data:
 No nonexistent globals, no mock render in the active path. The Apply-halftone button
 works again (restored to the v5.0 functional behaviour) and is now instrumented.
 
-## Tests — `node test-suite.js`
+## Tests — `npm test` (or `node test-suite.js`)
+
+First time: `npm install` (installs ESLint + Prettier as dev tooling; the plugin
+itself has zero runtime dependencies — Photoshop's UXP host never touches `node_modules`).
+
+- `npm test` — runs the real test suite
+- `npm run lint` — ESLint, checks for undefined references, dead code, and other real bug patterns
+- `npm run format:check` — Prettier, reports style differences without changing anything
+- `npm run format` — Prettier, rewrites files to the configured style (large diff — run deliberately, not part of normal commits)
 
 The suite loads the **actual shipped source files** (`core/*.js`, `engines/*.js`) into
 a Node `vm` context and exercises the **real exported functions**. It is not a set of

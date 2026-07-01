@@ -1,5 +1,30 @@
 # Changelog
 
+## v5.2.6 — Dev tooling: package.json, npm scripts, ESLint + Prettier
+
+Tooling only — no change to plugin runtime behaviour (UXP itself never reads
+`package.json`; it's Node-side infrastructure for testing and development).
+
+### Added
+- `package.json` — proper project metadata, `private: true` + `UNLICENSED` (this is
+  commercial code, not an open-source package), pinned Node engine (`>=18`).
+- npm scripts: `npm test` (runs `test-suite.js`), `npm run lint` (ESLint), `npm run
+  format` / `npm run format:check` (Prettier).
+- `package-lock.json` committed for reproducible installs across machines.
+- `eslint@8` + `.eslintrc.json` — the exact config already validated in this
+  project's audit (every cross-file global this codebase's shared-script-scope
+  architecture relies on is declared, so it checks real bug patterns —
+  undefined references, duplicate keys, unreachable code, fallthrough,
+  assignment-in-condition — without false-flagging the project's own design).
+  Runs clean: 0 errors, 0 warnings.
+- `prettier@3` + `.prettierrc.json` + `.prettierignore`, tuned to the codebase's
+  existing style (2-space indent, double quotes, semicolons). **Not applied yet** —
+  `format:check` currently flags formatting differences across most files, since the
+  codebase predates this config. Run `npm run format` when ready to normalise; that
+  will produce a large style-only diff by design, so it's left as a deliberate,
+  opt-in step rather than bundled into this commit.
+- `node_modules/` already covered by the existing `.gitignore`.
+
 ## v5.2.5 — Real auto colour separation engine (CMYK / Spot / Simulated Process)
 
 Built entirely from public-domain prepress technique and this codebase's own existing,
