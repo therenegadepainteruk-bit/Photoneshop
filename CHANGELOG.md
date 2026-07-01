@@ -1,5 +1,31 @@
 # Changelog
 
+## v5.2.8 — Extract inline CSS; kept `<script>` tags as classic scripts (not modules)
+
+`index.html` was ~50KB. Checked what was actually in it before assuming: one `<style>`
+block, 22.8KB / 972 lines / 46% of the file — and **zero** inline `<script>` blocks.
+Every line of JS was already in the 18 external files; there was nothing to "move."
+
+### Changed
+
+- Extracted the `<style>` block verbatim into `ui/styles.css`, linked via a standard
+  `<link rel="stylesheet" href="ui/styles.css" />`. `index.html` dropped from ~49.6KB
+  to ~26.9KB. Confirmed byte-for-byte semantically identical after extraction
+  (whitespace/comment-normalized diff), then ran it through Prettier — which can now
+  actually parse it, being a real `.css` file instead of buried in HTML — confirmed
+  that pass was cosmetic-only too.
+
+### Deliberately not changed
+
+- The `<script src="...">` tags stay as plain classic scripts, **not**
+  `type="module"`. Verified empirically, not just argued: took the real files this
+  change would touch, simulated module-scoping on them (module top-level
+  declarations don't attach to `window` — that's the defining behaviour of ES
+  modules), and re-ran `core/init-guard.js`'s `assertReady()`. Result: 61 of ~65
+  load-bearing cross-file connections vanish immediately (`guard`, `bp`, `setStatus`,
+  every engine export, gone). Same platform constraint as v5.2.7, hitting the
+  `<script>` tags directly this time instead of import/export syntax inside them.
+
 ## v5.2.7 — Initialization safety net (why not ES modules)
 
 Addresses a real, well-founded concern: this codebase relies on ~20 classic `<script>`

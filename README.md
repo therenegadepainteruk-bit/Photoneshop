@@ -1,4 +1,4 @@
-# Photoneshop v5.2.7
+# Photoneshop v5.2.8
 
 Photoshop UXP plugin for DTF / DTG / screen-print garment workflows.
 
