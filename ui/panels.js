@@ -3,6 +3,26 @@
  * Loaded last; all engine functions already defined.
  */
 
+// Switches to pane n, mirroring exactly what a user tab click already did —
+// shared by the sp-tabs "change" handler below and by initTabs()'s own
+// startup restore of the last-active tab (core/storage.js), so there is
+// only one place that knows how to activate a tab.
+function activateTab(n, tabsEl) {
+  clearPreviewTimer(); // FIX 2.2: Clear timer on tab switch to prevent accumulation
+  _currentTab = n; // defined in core/preview.js
+  if (tabsEl) tabsEl.selected = String(n);
+  document.querySelectorAll(".pane").forEach(function (x) {
+    x.classList.remove("on");
+  });
+  let pane = document.getElementById("p" + n);
+  if (pane) pane.classList.add("on");
+  let bar = document.getElementById("applyBar");
+  if (bar) bar.classList.toggle("hide", !EDIT_PANES[n]);
+  let body = document.querySelector(".body");
+  if (body) body.scrollTop = 0;
+  setUiState("lastTab", n); // core/storage.js
+}
+
 // sp-tabs owns its own single-selection state (the "selected" attribute on
 // the <sp-tabs> container itself, not a per-tab class) — unlike the chip
 // groups, this is not a selectOne() case. Content panes stay plain divs
@@ -13,20 +33,18 @@ function initTabs() {
     tabs.addEventListener("change", function () {
       let n = parseInt(tabs.selected, 10);
       if (!n) return;
-      clearPreviewTimer(); // FIX 2.2: Clear timer on tab switch to prevent accumulation
-      _currentTab = n; // defined in core/preview.js
-      document.querySelectorAll(".pane").forEach(function (x) {
-        x.classList.remove("on");
-      });
-      let pane = document.getElementById("p" + n);
-      if (pane) pane.classList.add("on");
-      let bar = document.getElementById("applyBar");
-      if (bar) bar.classList.toggle("hide", !EDIT_PANES[n]);
-      let body = document.querySelector(".body");
-      if (body) body.scrollTop = 0;
+      activateTab(n, null); // tabsEl already reflects the click, no need to re-set it
       // Cancel preview when leaving an edit pane
       if (!EDIT_PANES[n] && (_previewActive || _sourceReady)) cancelPreview();
     });
+  }
+  // Restore the last active tab, if one was ever saved (core/storage.js).
+  // No saved value yet (first run, or before this feature existed) leaves
+  // today's hard-coded startup tab untouched — this only changes behaviour
+  // once a user has actually switched tabs at least once.
+  let lastTab = getUiState("lastTab", null);
+  if (lastTab != null && document.getElementById("p" + lastTab)) {
+    activateTab(parseInt(lastTab, 10), tabs);
   }
   // Set initial apply bar state
   let bar = document.getElementById("applyBar");
@@ -148,8 +166,33 @@ function initLayerTarget() {
     b.addEventListener("click", function (e) {
       selectOne(".target-strip sp-action-button", e.currentTarget); // core/api.js
       setLayerTarget(e.currentTarget.dataset.target); // defined in core/history.js
+      setUiState("layerTarget", e.currentTarget.dataset.target); // core/storage.js
       setStatus("Target: " + e.currentTarget.textContent.trim(), "info");
     });
+  });
+  // Restore the last-used layer target, if one was ever saved. No saved
+  // value yet leaves today's hard-coded "All Visible" default untouched.
+  let savedTarget = getUiState("layerTarget", null);
+  let targetBtn = savedTarget
+    ? document.querySelector('.target-strip sp-action-button[data-target="' + savedTarget + '"]')
+    : null;
+  if (targetBtn) {
+    selectOne(".target-strip sp-action-button", targetBtn);
+    setLayerTarget(savedTarget);
+  }
+}
+
+// Shared by the DT-mode chip click handler and initDTStudio()'s own startup
+// restore — shows/hides each mode's own section and switches the pipeline
+// (engines/print.js setDTMode()).
+function applyDTMode(mode, btnEl) {
+  if (btnEl) selectOne("#dtModeChips sp-action-button", btnEl);
+  setDTMode(mode); // engines/print.js
+  document.querySelectorAll(".dt-dtg-only").forEach(function (el) {
+    el.classList.toggle("hide", mode === "dtf");
+  });
+  document.querySelectorAll(".dt-dtf-only").forEach(function (el) {
+    el.classList.toggle("hide", mode !== "dtf");
   });
 }
 
@@ -160,15 +203,9 @@ function initLayerTarget() {
 function initDTStudio() {
   document.querySelectorAll("#dtModeChips sp-action-button").forEach(function (b) {
     b.addEventListener("click", function (e) {
-      selectOne("#dtModeChips sp-action-button", e.currentTarget); // core/api.js
       let mode = e.currentTarget.dataset.dtmode;
-      setDTMode(mode); // engines/print.js
-      document.querySelectorAll(".dt-dtg-only").forEach(function (el) {
-        el.classList.toggle("hide", mode === "dtf");
-      });
-      document.querySelectorAll(".dt-dtf-only").forEach(function (el) {
-        el.classList.toggle("hide", mode !== "dtf");
-      });
+      applyDTMode(mode, e.currentTarget);
+      setUiState("dtMode", mode); // core/storage.js
       if (hasDoc() && EDIT_PANES[_currentTab]) schedulePreview();
     });
   });
@@ -178,6 +215,13 @@ function initDTStudio() {
       if (hasDoc() && EDIT_PANES[_currentTab]) schedulePreview();
     });
   }
+  // Restore the last-used DT mode, if one was ever saved. No saved value
+  // yet leaves today's hard-coded DTG default untouched.
+  let savedMode = getUiState("dtMode", null);
+  let modeBtn = savedMode
+    ? document.querySelector('#dtModeChips sp-action-button[data-dtmode="' + savedMode + '"]')
+    : null;
+  if (modeBtn) applyDTMode(savedMode, modeBtn);
 }
 
 function initModal() {

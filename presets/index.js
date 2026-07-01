@@ -864,7 +864,13 @@ function initBuiltinCategoryChips() {
     c.addEventListener("click", function (e) {
       selectOne("#presetCatChips sp-action-button", e.currentTarget); // core/api.js
       renderBuiltinPresets(e.currentTarget.dataset.cat);
+      setUiState("presetCategory", e.currentTarget.dataset.cat); // core/storage.js
     });
   });
-  renderBuiltinPresets("printer"); // default
+  // Restore the last-viewed preset category, if one was ever saved —
+  // otherwise keep today's hard-coded "printer" default.
+  let savedCat = getUiState("presetCategory", "printer");
+  let catBtn = document.querySelector('#presetCatChips sp-action-button[data-cat="' + savedCat + '"]');
+  if (catBtn) selectOne("#presetCatChips sp-action-button", catBtn);
+  renderBuiltinPresets(savedCat);
 }

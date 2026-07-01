@@ -33,6 +33,14 @@ index.html
   ├─ core/api.js
   │   └─ Uses window.app (Photoshop)
   │
+  ├─ core/storage.js [NEW v5.4.6]
+  │   └─ Uses window.localStorage (UI state/preferences) and window.fs —
+  │       uxp.storage.localFileSystem, exposed by core/api.js — for
+  │       persistent-token "recent folder" memory. Presets keep using their
+  │       own existing file-based store (presets/index.js's
+  │       window.fs.getDataFolder() + presets.json) — untouched, so existing
+  │       preset files keep loading exactly as before.
+  │
   ├─ core/preview.js
   │   └─ Uses core/api.js
   │

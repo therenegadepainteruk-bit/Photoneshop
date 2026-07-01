@@ -159,6 +159,7 @@ export const FULL_LOAD_ORDER = [
   "core/validation.js",
   "core/benchmark.js",
   "core/api.js",
+  "core/storage.js",
   "core/preview.js",
   "core/history.js",
   "core/diagnostics.js",

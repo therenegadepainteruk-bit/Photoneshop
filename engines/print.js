@@ -229,10 +229,25 @@ async function applyKnockout() {
   }
 }
 
+// Reuses the remembered folder for this export kind (core/storage.js) if one
+// was saved from a previous export and still resolves, otherwise prompts via
+// the folder picker exactly as every export did before this feature existed,
+// then remembers the choice for next time. Each export kind ("spots",
+// "screen", "dtg", "dtf") is remembered independently.
+async function resolveExportFolder(kind) {
+  let folder = await getRecentFolder(kind);
+  if (!folder) {
+    folder = await fs.getFolder();
+    if (!folder) return null;
+    await rememberFolder(kind, folder);
+  }
+  return folder;
+}
+
 async function exportSpots() {
   if (!guard()) return;
   try {
-    const folder = await fs.getFolder();
+    const folder = await resolveExportFolder("spots");
     if (!folder) {
       setStatus("Export cancelled", "info");
       return;
@@ -401,7 +416,7 @@ async function saveAsPNG(folder) {
 async function exportScreen() {
   if (!guard()) return;
   try {
-    const folder = await fs.getFolder();
+    const folder = await resolveExportFolder("screen");
     if (!folder) {
       setStatus("Export cancelled", "info");
       return;
@@ -439,7 +454,7 @@ async function exportScreen() {
 async function exportDTG() {
   if (!guard()) return;
   try {
-    const folder = await fs.getFolder();
+    const folder = await resolveExportFolder("dtg");
     if (!folder) {
       setStatus("Export cancelled", "info");
       return;
@@ -463,7 +478,7 @@ async function exportDTG() {
 async function exportDTF() {
   if (!guard()) return;
   try {
-    const folder = await fs.getFolder();
+    const folder = await resolveExportFolder("dtf");
     if (!folder) {
       setStatus("Export cancelled", "info");
       return;

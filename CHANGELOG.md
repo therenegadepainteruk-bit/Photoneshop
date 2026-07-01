@@ -1,5 +1,84 @@
 # Changelog
 
+## v5.4.6 — Native storage for UI state, preferences, and recent folders
+
+Reviewed all plugin storage. Presets (`presets/index.js`) already used the
+correct native mechanism — `window.fs.getDataFolder()` (UXP's per-plugin
+persistent data folder, `uxp.storage.localFileSystem`) plus a JSON file —
+and that is completely untouched, so existing `presets.json` files load
+exactly as before (backwards compatible by construction). What was actually
+custom/missing: several bits of UI state reset to hard-coded defaults on
+every panel reload, and every export action re-prompted for a destination
+folder on every single click with no memory of the last one. Both now use
+genuinely native UXP storage.
+
+### Added
+
+- `core/storage.js` — `getUiState(key, fallback)`/`setUiState(key, value)`,
+  a thin wrapper over `window.localStorage` (UXP panels support the standard
+  browser `localStorage` API for small persistent key/value data — this is
+  not the same restriction as UXP's WebView-hosted content, which cannot use
+  it; a panel's own HTML isn't loaded inside a WebView). All fields live
+  under one `localStorage` key as a single JSON blob, not one key per field.
+  Defensive by design: a disabled/unavailable `localStorage`, or corrupt
+  JSON from some future format change, makes `getUiState` return the
+  caller's fallback rather than throw — a storage failure can never break
+  the UI action that triggered it.
+- `core/storage.js` — `rememberFolder(kind, folderEntry)`/
+  `getRecentFolder(kind)`, wrapping UXP's documented mechanism for
+  remembering a folder across plugin reloads without a fresh permission
+  dialog every time: `window.fs.createPersistentToken()`/
+  `.getEntryForPersistentToken()` (`window.fs` is `uxp.storage.localFileSystem`,
+  already exposed by `core/api.js`). The token itself (just a string) is
+  stored via the same small UI-state blob above. `getRecentFolder` returns
+  `null` — never throws — if nothing was ever remembered, or if the stored
+  token can no longer be resolved (folder moved/deleted, or permission
+  revoked — the documented, expected failure mode for persistent tokens),
+  so callers fall back to prompting exactly like before this feature
+  existed.
+- `engines/print.js` `resolveExportFolder(kind)` — used by all four export
+  actions (`exportSpots`/`exportScreen`/`exportDTG`/`exportDTF`, kinds
+  `"spots"`/`"screen"`/`"dtg"`/`"dtf"`, each remembered independently). The
+  first export of a kind still prompts via `fs.getFolder()` exactly as
+  today; every export after that reuses the remembered folder directly,
+  skipping the picker, until the remembered folder becomes invalid, which
+  falls back to prompting again automatically. This changes existing
+  behaviour deliberately — confirmed with the user before implementing —
+  matching how most applications handle "recent export location."
+- UI state now persists across panel reloads instead of resetting to
+  hard-coded defaults: last active tab (`ui/panels.js` `activateTab()`),
+  layer target (`initLayerTarget()`), DT Studio's DTG/DTF mode
+  (`initDTStudio()`/`applyDTMode()`), and the Presets tab's last-viewed
+  category (`presets/index.js` `initBuiltinCategoryChips()`). Every restore
+  path only activates when a value was actually saved — first run (or any
+  install predating this feature) leaves today's existing hard-coded
+  startup state completely untouched.
+- `test/storage.test.js` (16 tests) — the real `getUiState`/`setUiState`
+  against a real (Map-backed) `localStorage` (round-trips, merges rather
+  than replacing, single storage key, graceful fallback on a disabled/
+  throwing `localStorage` or corrupt stored JSON), the real
+  `rememberFolder`/`getRecentFolder` against a controllable
+  `createPersistentToken`/`getEntryForPersistentToken` mock (round-trips,
+  independent per-kind memory, graceful `null` on a stale token, never
+  throws even if the underlying token creation fails), and the real
+  `resolveExportFolder()` (prompts + remembers on first use, reuses without
+  prompting once remembered, a cancelled picker is never remembered, each
+  export kind resolved independently).
+
+### Left unchanged
+
+- `presets/index.js`'s `presetFile()`/`loadPresets()`/`persistPresets()`
+  (the `presets.json` read/write, `window.fs.getDataFolder()`) — already the
+  correct native File System pattern for this larger, structured data;
+  changing its format or location risks breaking existing installs'
+  presets, which the task explicitly required preserving.
+- Favourite settings (`toggleFav()`) — already part of the same
+  `presets.json` structure (a `fav` boolean per user preset); no separate
+  storage needed.
+
+No image-processing code touched. Verified via `npm run format:check`,
+`npm run lint`, and `npm test` (80/80 passing, 16 new).
+
 ## v5.4.5 — Undo experience: one History entry per logical action, not one per tick
 
 Reviewed every editing operation for how it's recorded in Photoshop's native

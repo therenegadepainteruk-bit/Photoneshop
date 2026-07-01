@@ -61,6 +61,7 @@ window.PhotoneshopInit = (function () {
       "suspendHistorySuspension",
       "resumeHistorySuspension",
     ],
+    "core/storage.js": ["getUiState", "setUiState", "rememberFolder", "getRecentFolder"],
     "core/preview.js": [
       "schedulePreview",
       "cancelPreview",
