@@ -144,28 +144,30 @@ async function splitChannels() {
     const w = doc.width >= doc.height ? scanDim : Math.round((scanDim * doc.width) / doc.height);
     const h = doc.height >= doc.width ? scanDim : Math.round((scanDim * doc.height) / doc.width);
 
-    let sourceId, buf, comps;
-    await modal("Photoneshop: split source", async function () {
-      sourceId = await bpCreateLayer([{ _obj: "mergeVisible", duplicate: true }]);
+    // Single executeAsModal scope for the whole action (was 3 separate modal
+    // calls — sample source, optional early-cleanup, build channel layers —
+    // which fragmented one button click into 2 separate Photoshop history/
+    // undo entries on the happy path). kMeansColors is a short, pure-JS
+    // computation on an already-downscaled buffer, not a Photoshop call, so
+    // running it inside this same scope doesn't hold up anything real.
+    let centroidCount = 0;
+    _channelLayers = [];
+    await modal("Photoneshop: split into colour layers", async function () {
+      const sourceId = await bpCreateLayer([{ _obj: "mergeVisible", duplicate: true }]);
       if (sourceId == null) throw new Error("Could not stamp artwork");
       await bp([{ _obj: "hide", null: [{ _ref: "layer", _id: sourceId }] }]).catch(function () {});
       const px = await window.imaging.getPixels({ layerID: sourceId, targetSize: { width: w, height: h } });
-      buf = await px.imageData.getData();
-      comps = px.imageData.components;
+      const buf = await px.imageData.getData();
+      const comps = px.imageData.components;
       px.imageData.dispose();
-    });
 
-    const centroids = kMeansColors(buf, comps, n, 8);
-    if (centroids.length === 0) {
-      await modal("Photoneshop: cleanup", async function () {
+      const centroids = kMeansColors(buf, comps, n, 8);
+      centroidCount = centroids.length;
+      if (centroids.length === 0) {
         await bp([{ _obj: "delete", _target: [{ _ref: "layer", _id: sourceId }] }]).catch(function () {});
-      });
-      setStatus("No opaque pixels found to split", "warning");
-      return;
-    }
+        return;
+      }
 
-    _channelLayers = [];
-    await modal("Photoneshop: build channel layers", async function () {
       for (let c = 0; c < centroids.length; c++) {
         const col = centroids[c];
         const alpha = new Uint8ClampedArray(w * h);
@@ -210,11 +212,16 @@ async function splitChannels() {
       await bp([{ _obj: "delete", _target: [{ _ref: "layer", _id: sourceId }] }]).catch(function () {});
     });
 
+    if (centroidCount === 0) {
+      setStatus("No opaque pixels found to split", "warning");
+      return;
+    }
+
     recordAction("group", "ColoursReduce");
     renderChannelEditor();
     setStatus(
       "Split into " +
-        centroids.length +
+        centroidCount +
         " colour layers" +
         (longEdge > SPLIT_MAX_DIM ? " (processed at " + scanDim + "px)" : ""),
       "success"
@@ -438,103 +445,103 @@ async function autoSeparate() {
     const w = doc.width >= doc.height ? scanDim : Math.round((scanDim * doc.width) / doc.height);
     const h = doc.height >= doc.width ? scanDim : Math.round((scanDim * doc.height) / doc.width);
 
-    let sourceId, buf, comps;
-    await modal("Photoneshop: separate source", async function () {
-      sourceId = await bpCreateLayer([{ _obj: "mergeVisible", duplicate: true }]);
+    // Single executeAsModal scope for the whole action (was 3 separate modal
+    // calls — sample source, optional early-cleanup, build separations —
+    // which fragmented one button click into 2 separate Photoshop history/
+    // undo entries on the happy path). The CMYK/k-means channel-list build is
+    // pure JS on an already-downscaled buffer, not a Photoshop call, so
+    // running it inside this same scope doesn't hold up anything real.
+    const groupName = "AutoSeparation";
+    let channels = [];
+    await modal("Photoneshop: auto separate", async function () {
+      const sourceId = await bpCreateLayer([{ _obj: "mergeVisible", duplicate: true }]);
       if (sourceId == null) throw new Error("Could not stamp artwork");
       await bp([{ _obj: "hide", null: [{ _ref: "layer", _id: sourceId }] }]).catch(function () {});
       const px = await window.imaging.getPixels({ layerID: sourceId, targetSize: { width: w, height: h } });
-      buf = await px.imageData.getData();
-      comps = px.imageData.components;
+      const buf = await px.imageData.getData();
+      const comps = px.imageData.components;
       px.imageData.dispose();
-    });
 
-    // ---- build the channel list: [{name, r, g, b, alpha(w*h), angle}] ----
-    let channels = [];
-    if (mode === "cmyk") {
-      const inkColors = {
-        c: { r: 0, g: 174, b: 239 },
-        m: { r: 236, g: 0, b: 140 },
-        y: { r: 255, g: 241, b: 0 },
-        k: { r: 0, g: 0, b: 0 },
-      };
-      const chanVal = {
-        c: new Float32Array(w * h),
-        m: new Float32Array(w * h),
-        y: new Float32Array(w * h),
-        k: new Float32Array(w * h),
-      };
-      const alphaSrc = new Uint8ClampedArray(w * h);
-      for (let p = 0, px2 = 0; px2 < w * h; p += comps, px2++) {
-        const a = comps >= 4 ? buf[p + 3] : 255;
-        alphaSrc[px2] = a;
-        if (a < 10) continue;
-        const cmyk = rgbToCmyk(buf[p], buf[p + 1] || 0, buf[p + 2] || 0);
-        chanVal.c[px2] = cmyk.c;
-        chanVal.m[px2] = cmyk.m;
-        chanVal.y[px2] = cmyk.y;
-        chanVal.k[px2] = cmyk.k;
-      }
-      ["c", "m", "y", "k"].forEach(function (ch) {
-        const alpha = new Uint8ClampedArray(w * h);
-        for (let i = 0; i < w * h; i++) alpha[i] = Math.round(chanVal[ch][i] * alphaSrc[i]);
-        channels.push({
-          name: ch.toUpperCase(),
-          r: inkColors[ch].r,
-          g: inkColors[ch].g,
-          b: inkColors[ch].b,
-          alpha: alpha,
-          angle: CMYK_ANGLES[ch],
-        });
-      });
-    } else {
-      const centroids = kMeansColors(buf, comps, n, 8);
-      if (centroids.length === 0) {
-        await modal("Photoneshop: cleanup", async function () {
-          await bp([{ _obj: "delete", _target: [{ _ref: "layer", _id: sourceId }] }]).catch(function () {});
-        });
-        setStatus("No opaque pixels found to separate", "warning");
-        return;
-      }
-      channels = centroids.map(function (col, c) {
-        const ink =
-          mode === "simprocess"
-            ? nearestSimInk(col.r, col.g, col.b)
-            : { name: nearestColorName(col.r, col.g, col.b), r: col.r, g: col.g, b: col.b };
-        const alpha = new Uint8ClampedArray(w * h);
+      // ---- build the channel list: [{name, r, g, b, alpha(w*h), angle}] ----
+      if (mode === "cmyk") {
+        const inkColors = {
+          c: { r: 0, g: 174, b: 239 },
+          m: { r: 236, g: 0, b: 140 },
+          y: { r: 255, g: 241, b: 0 },
+          k: { r: 0, g: 0, b: 0 },
+        };
+        const chanVal = {
+          c: new Float32Array(w * h),
+          m: new Float32Array(w * h),
+          y: new Float32Array(w * h),
+          k: new Float32Array(w * h),
+        };
+        const alphaSrc = new Uint8ClampedArray(w * h);
         for (let p = 0, px2 = 0; px2 < w * h; p += comps, px2++) {
           const a = comps >= 4 ? buf[p + 3] : 255;
-          if (a < 10) {
-            alpha[px2] = 0;
-            continue;
-          }
-          let best = 0,
-            bestD = Infinity;
-          for (let cc = 0; cc < centroids.length; cc++) {
-            const dr = buf[p] - centroids[cc].r,
-              dg = (buf[p + 1] || 0) - centroids[cc].g,
-              db = (buf[p + 2] || 0) - centroids[cc].b;
-            const d = dr * dr + dg * dg + db * db;
-            if (d < bestD) {
-              bestD = d;
-              best = cc;
-            }
-          }
-          alpha[px2] = best === c ? a : 0;
+          alphaSrc[px2] = a;
+          if (a < 10) continue;
+          const cmyk = rgbToCmyk(buf[p], buf[p + 1] || 0, buf[p + 2] || 0);
+          chanVal.c[px2] = cmyk.c;
+          chanVal.m[px2] = cmyk.m;
+          chanVal.y[px2] = cmyk.y;
+          chanVal.k[px2] = cmyk.k;
         }
-        return {
-          name: ink.name,
-          r: ink.r,
-          g: ink.g,
-          b: ink.b,
-          alpha: alpha,
-          angle: ANGLE_CYCLE[c % ANGLE_CYCLE.length],
-        };
-      });
-    }
+        ["c", "m", "y", "k"].forEach(function (ch) {
+          const alpha = new Uint8ClampedArray(w * h);
+          for (let i = 0; i < w * h; i++) alpha[i] = Math.round(chanVal[ch][i] * alphaSrc[i]);
+          channels.push({
+            name: ch.toUpperCase(),
+            r: inkColors[ch].r,
+            g: inkColors[ch].g,
+            b: inkColors[ch].b,
+            alpha: alpha,
+            angle: CMYK_ANGLES[ch],
+          });
+        });
+      } else {
+        const centroids = kMeansColors(buf, comps, n, 8);
+        if (centroids.length === 0) {
+          await bp([{ _obj: "delete", _target: [{ _ref: "layer", _id: sourceId }] }]).catch(function () {});
+          return;
+        }
+        channels = centroids.map(function (col, c) {
+          const ink =
+            mode === "simprocess"
+              ? nearestSimInk(col.r, col.g, col.b)
+              : { name: nearestColorName(col.r, col.g, col.b), r: col.r, g: col.g, b: col.b };
+          const alpha = new Uint8ClampedArray(w * h);
+          for (let p = 0, px2 = 0; px2 < w * h; p += comps, px2++) {
+            const a = comps >= 4 ? buf[p + 3] : 255;
+            if (a < 10) {
+              alpha[px2] = 0;
+              continue;
+            }
+            let best = 0,
+              bestD = Infinity;
+            for (let cc = 0; cc < centroids.length; cc++) {
+              const dr = buf[p] - centroids[cc].r,
+                dg = (buf[p + 1] || 0) - centroids[cc].g,
+                db = (buf[p + 2] || 0) - centroids[cc].b;
+              const d = dr * dr + dg * dg + db * db;
+              if (d < bestD) {
+                bestD = d;
+                best = cc;
+              }
+            }
+            alpha[px2] = best === c ? a : 0;
+          }
+          return {
+            name: ink.name,
+            r: ink.r,
+            g: ink.g,
+            b: ink.b,
+            alpha: alpha,
+            angle: ANGLE_CYCLE[c % ANGLE_CYCLE.length],
+          };
+        });
+      }
 
-    const groupName = "AutoSeparation";
-    await modal("Photoneshop: build separations", async function () {
       for (let i = 0; i < channels.length; i++) {
         const ch = channels[i];
         const layerId = await bpCreateLayer([
@@ -556,6 +563,11 @@ async function autoSeparate() {
       }
       await bp([{ _obj: "delete", _target: [{ _ref: "layer", _id: sourceId }] }]).catch(function () {});
     });
+
+    if (channels.length === 0) {
+      setStatus("No opaque pixels found to separate", "warning");
+      return;
+    }
 
     recordAction("group", groupName);
     setStatus(

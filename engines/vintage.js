@@ -66,6 +66,10 @@ async function autoDetectThreshold() {
   if (!guard()) return;
   try {
     setStatus("Analysing histogram…", "info");
+    // Design Studio (tab 2) is a live-preview tab — don't sample pixels while
+    // a preview render is still mid-write (same guard applyResult()/
+    // applyHalftoneEngine()/applyDT() already use before touching the document).
+    await waitForRenderLock();
     let thr = 128;
     await modal("Auto threshold", async () => {
       const px = await imaging.getPixels({ targetSize: { width: 256, height: 256 } });

@@ -46,6 +46,10 @@ async function undoLast() {
   }
   let last = _psHistory.pop();
   try {
+    // The footer's Undo button is reachable from any tab, including the
+    // live-preview ones — don't touch the layer tree while a preview render
+    // is still mid-write (same guard applyResult() already uses).
+    await waitForRenderLock();
     await modal("Photoneshop: undo", async function () {
       let doc = window.app.activeDocument;
       if (!doc) return;
@@ -132,6 +136,10 @@ async function runNonDestructive(name, cmds, group) {
 async function toggleSolo() {
   if (!guard()) return;
   try {
+    // The footer's Solo button is reachable from any tab, including the
+    // live-preview ones — don't toggle layer visibility while a preview
+    // render is still mid-write (same guard applyResult() already uses).
+    await waitForRenderLock();
     await modal("Photoneshop: solo", async function () {
       let doc = window.app.activeDocument;
       if (!doc) return;

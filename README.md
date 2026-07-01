@@ -1,4 +1,4 @@
-# Photoneshop v5.4.0
+# Photoneshop v5.4.1
 
 Photoshop UXP plugin for DTF / DTG / screen-print garment workflows.
 
@@ -76,8 +76,22 @@ Folder-copy installs do not work; UXP requires sideloading via UDT.
 | DT Studio tab (was "DTG" + "DTF")                                | **Working** — combined DTG/DTF optimisation with an opt-in halftone-screen finishing step (real pixel renderer)   |
 | Garment Preview tab                                              | Stub                                                                                                              |
 | UI                                                               | 14 tabs, native UXP Spectrum elements (`sp-*`) — **not yet verified in a live Photoshop panel**, see v5.4.0 note  |
+| Photoshop-op wrapping (`executeAsModal`)                         | Every document-modifying action audited; all wrap in one atomic modal scope, live-preview races guarded           |
 
 See `CHANGELOG.md` and `INTEGRATION-REPORT-v5.2.1.md` for detail.
+
+## v5.4.1 note
+
+Audited every Photoshop-modifying operation against `executeAsModal` best
+practices (no processing/algorithm changes). Fixed two actions that opened
+2–3 separate modal scopes for one logical click — `splitChannels()` and
+`autoSeparate()` — which fragmented a single undo into 2 native History
+states; each is now one atomic scope. Added the existing `waitForRenderLock()`
+document-conflict guard (already used by Apply/Halftone/DT Studio) to four
+more actions reachable while a live-preview render could be mid-write:
+Design Studio's auto-threshold, White Ink's underbase generator, and the
+footer's Undo/Solo buttons (reachable from any tab). See `CHANGELOG.md` for
+the full list of what was reviewed and confirmed already correct.
 
 ## v5.4.0 note
 

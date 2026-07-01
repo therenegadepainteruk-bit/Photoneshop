@@ -109,6 +109,10 @@ async function generateUnderbase() {
     setStatus("Generating white underbase…", "info");
     const density = num("wDensity");
     const choke = Math.max(0, Math.round(num("wChoke") / 3));
+    // White Ink (tab 6) is a live-preview tab — don't stamp a new layer while
+    // a preview render is still mid-write (same guard applyResult()/
+    // applyHalftoneEngine()/applyDT() already use before touching the document).
+    await waitForRenderLock();
     await modal("White Underbase", async () => {
       await stampInGroup("White Underbase", "WhiteInkUnderbase");
       await bp(buildWhiteInkPipeline());

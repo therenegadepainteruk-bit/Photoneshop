@@ -1,5 +1,77 @@
 # Changelog
 
+## v5.4.1 — Photoshop-operations audit: atomic history steps, document-conflict guards
+
+Reviewed every function that modifies the document (every `bp()`/`bpCreateLayer()`
+call site and every `window.imaging.getPixels`/`putPixels` call site) against
+Adobe's `executeAsModal` best practices. No image-processing algorithm, batchPlay
+descriptor, or UI markup was touched — this is purely about how operations are
+grouped into modal scope and sequenced against the live-preview mechanism.
+
+### Fixed — fragmented undo history
+
+Two user actions each opened **2–3 separate `executeAsModal` calls** for what
+is one logical click, which meant Photoshop's native History panel recorded
+2 separate undo steps per action instead of 1 (and on the "no colours found"
+early-exit path, a 3rd). A single native Ctrl+Z would only partially revert
+the action, leaving behind e.g. a re-materialised hidden source-snapshot
+layer that needed a second undo to clean up.
+
+- `engines/separation.js` `splitChannels()` (Colours tab "Split into colour
+  layers"): was `modal("split source")` → (pure-JS k-means) → `modal("build
+channel layers")`. Now one `modal("split into colour layers")` scope; the
+  k-means computation (pure JS on an already-downscaled buffer, not a
+  Photoshop call) runs inside it without holding up anything real.
+- `engines/separation.js` `autoSeparate()` (Screen Studio "Auto separate"):
+  same pattern — `modal("separate source")` → (pure-JS CMYK/k-means channel
+  build) → `modal("build separations")` merged into one `modal("auto
+separate")` scope.
+- Both are behaviour-identical: same batchPlay commands, same order, same
+  status messages, same early-exit warning on "no opaque pixels found" — only
+  the modal-scope boundaries moved. Verified via `test/separation.test.js`
+  (unmodified, still 7/7 passing) and a full read-through diff against the
+  original command sequence.
+
+### Fixed — missing document-conflict guards
+
+`core/preview.js` already has a `waitForRenderLock()` guard — wait for any
+in-flight live-preview render to finish before touching the document — used
+by `applyResult()`, `applyHalftoneEngine()`, `applyDT()`, and `cancelPreview()`.
+Four more actions reachable while a live-preview render could be mid-write
+were missing it:
+
+- `engines/vintage.js` `autoDetectThreshold()` — Design Studio (tab 2, a
+  live-preview tab) "Auto-detect optimal threshold" samples pixels via
+  `imaging.getPixels()`; a user can drag a slider then immediately click this
+  before the debounced preview render finishes.
+- `engines/print.js` `generateUnderbase()` — White Ink (tab 6, a live-preview
+  tab) "Generate white underbase" stamps a new layer the same way.
+- `core/history.js` `undoLast()` and `toggleSolo()` — the footer's Undo and
+  Solo buttons are reachable from **any** tab, including the four
+  live-preview ones, at any time.
+
+All four now call `await waitForRenderLock();` before their own `modal(...)`
+call, exactly mirroring the existing pattern — no new mechanism introduced,
+just applied consistently to the functions that were missing it.
+
+### Reviewed and confirmed already correct (no change)
+
+- Every other action function already wraps its Photoshop-modifying calls in
+  exactly one `modal(...)` scope.
+- Helper functions that call `bp()`/`window.imaging.*` without their own
+  `modal()` wrapper (`stampLayer`, `groupSelectedInto`, `writeChannelLayer`,
+  `halftoneChannelLayer`, `chokeChannelLayer`, `writeRegistrationMarks`,
+  `readLayerPixels`, `writeHalftonePreview`/`writeHalftoneFinal`) are, in
+  every call site, only ever invoked from within a caller's existing `modal()`
+  scope — correct, since nesting `executeAsModal` calls is not supported.
+  Wrapping these individually would have been actively wrong.
+- `core/diagnostics.js`'s 4 diagnostic tests intentionally each get their own
+  `modal()`/history entry — they're independent, individually-inspectable
+  tests (`diagTest4` explicitly leaves its result layer for manual review),
+  not one atomic action.
+- `applyResult()`'s two `modal()` calls are a mutually-exclusive if/else (only
+  one ever runs per call), not a fragmentation case.
+
 ## v5.4.0 — UI-only migration to native UXP Spectrum elements
 
 Every custom-styled HTML control is replaced with UXP's built-in Spectrum
