@@ -123,8 +123,11 @@ function hexToRgb(hex) {
   return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
 }
 
+// Reads the selected chip in a group of sp-action-button elements (Spectrum's
+// "selected" boolean property/attribute drives the pressed visual state,
+// replacing the old hand-rolled ".chip.on" CSS class).
 function activeChip(group, attr, def) {
-  var a = document.querySelector(group + " .chip.on");
+  var a = document.querySelector(group + " sp-action-button[selected]");
   return a ? a.dataset[attr] || a.textContent.trim() : def;
 }
 
@@ -142,15 +145,15 @@ function luminance(r, g, b) {
   return 0.299 * r + 0.587 * g + 0.114 * b;
 }
 
-// Selects exactly one element within a group: adds "on" to el, removes "on"
-// from every sibling matched by groupSelector. The common half of every
-// chip/tab/segmented-control click handler in this plugin (previously
-// reimplemented inline at each call site).
+// Selects exactly one sp-action-button within a group: sets el.selected =
+// true, clears .selected on every sibling matched by groupSelector. The
+// common half of every chip/segmented-control click handler in this plugin
+// (previously reimplemented inline at each call site).
 function selectOne(groupSelector, el) {
   document.querySelectorAll(groupSelector).forEach(function (x) {
-    x.classList.remove("on");
+    x.selected = false;
   });
-  if (el) el.classList.add("on");
+  if (el) el.selected = true;
 }
 
 // ---- op builders (used by all engines) ----
@@ -199,25 +202,15 @@ function getWriteInProgress() {
   return _writeInProgress;
 }
 
-// ---- fillSlider: defined here so every subsequent file can use it ----
-function fillSlider(el) {
-  if (!el) return;
-  var min = +el.min,
-    max = +el.max,
-    v = +el.value;
-  var f = document.getElementById(el.id + "F");
-  if (f) f.style.width = "calc(" + ((v - min) / (max - min)) * 100 + "% - 8px)";
-}
-
-// Sets a range input's value AND its adjacent "-V" label. The browser silently
-// clamps el.value to [min,max] on assignment (e.g. a preset requesting lpi:0 on a
-// slider whose min="20"), so the label is set from el.value AFTER assignment —
-// not from the raw `value` argument — to guarantee the two never disagree.
+// Sets an sp-slider's value AND its adjacent "-V" label. sp-slider clamps its
+// own .value to [min,max] on assignment (mirroring the native range input
+// behaviour this replaced), so the label is set from el.value AFTER
+// assignment — not from the raw `value` argument — to guarantee the two
+// never disagree (e.g. a preset requesting lpi:0 on a slider whose min="20").
 function setSlider(id, value) {
   var el = document.getElementById(id);
   if (!el) return;
   el.value = value;
   var out = document.getElementById(id + "V");
   if (out) out.textContent = el.value;
-  fillSlider(el);
 }

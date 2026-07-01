@@ -1,6 +1,6 @@
 /**
  * core/history.js — Action history, layer grouping, solo, coverage, reset
- * Note: fillSlider() and setSlider() are defined in core/api.js (loads first).
+ * Note: setSlider() is defined in core/api.js (loads first).
  */
 
 let _psHistory = [];

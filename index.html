@@ -10,38 +10,67 @@
       <div class="hd">
         <div>
           <h1>Photoneshop</h1>
-          <p>Garment Print Platform · build 20 (DT Studio + Screen Studio)</p>
+          <p>Garment Print Platform · build 21 (Spectrum UI)</p>
         </div>
       </div>
       <div class="body">
         <div class="target-strip">
           <span class="target-label">Target</span>
-          <button class="target-btn on" data-target="visible">All Visible</button>
-          <button class="target-btn" data-target="active">Active Layer</button>
-          <button class="target-btn" data-target="selection">Selection</button>
+          <sp-action-button selected data-target="visible">All Visible</sp-action-button>
+          <sp-action-button data-target="active">Active Layer</sp-action-button>
+          <sp-action-button data-target="selection">Selection</sp-action-button>
         </div>
-        <div class="nav">
-          <button class="on" data-tab="1">Print Doctor<span class="tag">Analyse</span></button>
-          <button data-tab="2">Design Studio<span class="tag">Create</span></button>
-          <button data-tab="3">Halftone<span class="tag">Dots</span></button>
-          <button data-tab="4">Colours<span class="tag">Reduce</span></button>
-          <button data-tab="5">Screen Studio<span class="tag">Channels</span></button>
-          <button data-tab="6">White Ink<span class="tag">Underbase</span></button>
-          <button data-tab="7">Cleanup<span class="tag">Fix</span></button>
-          <button data-tab="8">Garment<span class="tag">Fabric</span></button>
-          <button data-tab="9">DT Studio<span class="tag">DTG/DTF</span></button>
-          <button data-tab="10">Preview<span class="tag">Simulate</span></button>
-          <button data-tab="11">Production<span class="tag">Output</span></button>
-          <button data-tab="12">Export<span class="tag">Save</span></button>
-          <button data-tab="13">Presets<span class="tag">Load/Save</span></button>
-          <button data-tab="14">Diagnostics<span class="tag">Debug</span></button>
-        </div>
+
+        <sp-tabs id="navTabs" selected="1" quiet>
+          <sp-tab value="1"
+            ><div>Print Doctor<span class="tag">Analyse</span></div></sp-tab
+          >
+          <sp-tab value="2"
+            ><div>Design Studio<span class="tag">Create</span></div></sp-tab
+          >
+          <sp-tab value="3"
+            ><div>Halftone<span class="tag">Dots</span></div></sp-tab
+          >
+          <sp-tab value="4"
+            ><div>Colours<span class="tag">Reduce</span></div></sp-tab
+          >
+          <sp-tab value="5"
+            ><div>Screen Studio<span class="tag">Channels</span></div></sp-tab
+          >
+          <sp-tab value="6"
+            ><div>White Ink<span class="tag">Underbase</span></div></sp-tab
+          >
+          <sp-tab value="7"
+            ><div>Cleanup<span class="tag">Fix</span></div></sp-tab
+          >
+          <sp-tab value="8"
+            ><div>Garment<span class="tag">Fabric</span></div></sp-tab
+          >
+          <sp-tab value="9"
+            ><div>DT Studio<span class="tag">DTG/DTF</span></div></sp-tab
+          >
+          <sp-tab value="10"
+            ><div>Preview<span class="tag">Simulate</span></div></sp-tab
+          >
+          <sp-tab value="11"
+            ><div>Production<span class="tag">Output</span></div></sp-tab
+          >
+          <sp-tab value="12"
+            ><div>Export<span class="tag">Save</span></div></sp-tab
+          >
+          <sp-tab value="13"
+            ><div>Presets<span class="tag">Load/Save</span></div></sp-tab
+          >
+          <sp-tab value="14"
+            ><div>Diagnostics<span class="tag">Debug</span></div></sp-tab
+          >
+        </sp-tabs>
 
         <div class="pane on" id="p1">
           <div class="sec">
             <div class="actions">
-              <button class="btn primary" id="runDoctor">Analyse this artwork</button>
-              <button class="btn" id="runDeep">Deep analysis (pixel-level)</button>
+              <sp-button variant="cta" id="runDoctor">Analyse this artwork</sp-button>
+              <sp-button variant="secondary" id="runDeep">Deep analysis (pixel-level)</sp-button>
             </div>
             <div class="dr-score-wrap">
               <div class="dr-score" id="drScore">—</div>
@@ -58,35 +87,34 @@
           <div class="sec">
             <div class="grp">Quick Fixes</div>
             <div class="actions">
-              <button class="btn" id="fixUpscale">Upscale to 300 DPI</button>
+              <sp-button variant="secondary" id="fixUpscale">Upscale to 300 DPI</sp-button>
             </div>
             <div class="resize-row">
-              <input type="text" id="resizeW" placeholder="Width (in)" inputmode="decimal" />
-              <input type="text" id="resizeH" placeholder="Height (in)" inputmode="decimal" />
-              <button class="btn" id="fixResize" style="flex-shrink: 0; width: auto">Resize</button>
+              <sp-textfield type="number" id="resizeW" placeholder="Width (in)"></sp-textfield>
+              <sp-textfield type="number" id="resizeH" placeholder="Height (in)"></sp-textfield>
+              <sp-button variant="secondary" id="fixResize">Resize</sp-button>
             </div>
             <div class="actions">
-              <button class="btn" id="fixEnhance">Auto enhance</button>
-              <button class="btn" id="fixFlatten">Flatten layers</button>
+              <sp-button variant="secondary" id="fixEnhance">Auto enhance</sp-button>
+              <sp-button variant="secondary" id="fixFlatten">Flatten layers</sp-button>
             </div>
             <div class="colour-mode-row">
               <span class="target-label">Colour Mode</span>
-              <div class="toggle-switch" id="colourModeToggle">
-                <div class="toggle-thumb"></div>
-                <button class="on" id="toggleRGB" data-mode="RGB">RGB</button>
-                <button id="toggleCMYK" data-mode="CMYK">CMYK</button>
+              <div class="chips" id="colourModeToggle">
+                <sp-action-button selected id="toggleRGB" data-mode="RGB">RGB</sp-action-button>
+                <sp-action-button id="toggleCMYK" data-mode="CMYK">CMYK</sp-action-button>
               </div>
             </div>
             <p class="hint" id="fixHint">Run analysis first — fixes activate based on what your artwork needs.</p>
           </div>
         </div>
 
-        <!-- DEEP ANALYSIS MODAL -->
+        <!-- DEEP ANALYSIS DIALOG -->
         <div class="modal-overlay hide" id="deepModal">
-          <div class="modal-card">
+          <sp-dialog id="deepDialog" size="m">
             <div class="modal-head">
-              <h3>Deep Analysis</h3>
-              <button class="modal-close" id="deepClose">&times;</button>
+              <sp-heading size="s">Deep Analysis</sp-heading>
+              <sp-action-button quiet id="deepClose" label="Close">×</sp-action-button>
             </div>
             <div class="modal-body" id="deepBody">
               <p class="hint">
@@ -94,103 +122,76 @@
                 settings, colour profile, and flag pixel-level issues a quick scan would miss.
               </p>
             </div>
-          </div>
+          </sp-dialog>
         </div>
 
         <div class="pane" id="p2">
           <div class="sec">
             <div class="grp">Threshold</div>
             <div class="s">
-              <div class="s-row"><label>Level</label><span class="s-val" id="threshV">128</span></div>
-              <div class="s-track">
-                <div class="s-fill" id="threshF"></div>
-                <input type="range" id="thresh" min="0" max="255" value="128" />
-              </div>
+              <div class="s-row"><label for="thresh">Level</label><span class="s-val" id="threshV">128</span></div>
+              <sp-slider id="thresh" min="0" max="255" value="128" hide-stepper></sp-slider>
             </div>
-            <div class="actions"><button class="btn" id="autoAnalyse">Auto-detect optimal threshold</button></div>
+            <div class="actions">
+              <sp-button variant="secondary" id="autoAnalyse">Auto-detect optimal threshold</sp-button>
+            </div>
           </div>
           <div class="sec">
             <div class="grp">Tone</div>
             <div class="s">
-              <div class="s-row"><label>Exposure</label><span class="s-val" id="exposureV">0</span></div>
-              <div class="s-track">
-                <div class="s-fill" id="exposureF"></div>
-                <input type="range" id="exposure" min="-100" max="100" value="0" />
-              </div>
+              <div class="s-row"><label for="exposure">Exposure</label><span class="s-val" id="exposureV">0</span></div>
+              <sp-slider id="exposure" min="-100" max="100" value="0" hide-stepper></sp-slider>
             </div>
             <div class="s">
-              <div class="s-row"><label>Highlights</label><span class="s-val" id="highlightV">0</span></div>
-              <div class="s-track">
-                <div class="s-fill" id="highlightF"></div>
-                <input type="range" id="highlight" min="0" max="100" value="0" />
+              <div class="s-row">
+                <label for="highlight">Highlights</label><span class="s-val" id="highlightV">0</span>
               </div>
+              <sp-slider id="highlight" min="0" max="100" value="0" hide-stepper></sp-slider>
             </div>
             <div class="s">
-              <div class="s-row"><label>Shadow Lift</label><span class="s-val" id="shadowV">0</span></div>
-              <div class="s-track">
-                <div class="s-fill" id="shadowF"></div>
-                <input type="range" id="shadow" min="0" max="100" value="0" />
-              </div>
+              <div class="s-row"><label for="shadow">Shadow Lift</label><span class="s-val" id="shadowV">0</span></div>
+              <sp-slider id="shadow" min="0" max="100" value="0" hide-stepper></sp-slider>
             </div>
             <div class="s">
-              <div class="s-row"><label>Brightness</label><span class="s-val" id="brightV">0</span></div>
-              <div class="s-track">
-                <div class="s-fill" id="brightF"></div>
-                <input type="range" id="bright" min="-100" max="100" value="0" />
-              </div>
+              <div class="s-row"><label for="bright">Brightness</label><span class="s-val" id="brightV">0</span></div>
+              <sp-slider id="bright" min="-100" max="100" value="0" hide-stepper></sp-slider>
             </div>
             <div class="s">
-              <div class="s-row"><label>Contrast</label><span class="s-val" id="contrastV">0</span></div>
-              <div class="s-track">
-                <div class="s-fill" id="contrastF"></div>
-                <input type="range" id="contrast" min="-100" max="100" value="0" />
-              </div>
+              <div class="s-row"><label for="contrast">Contrast</label><span class="s-val" id="contrastV">0</span></div>
+              <sp-slider id="contrast" min="-100" max="100" value="0" hide-stepper></sp-slider>
             </div>
             <div class="s">
-              <div class="s-row"><label>Blur</label><span class="s-val" id="blurV">0</span></div>
-              <div class="s-track">
-                <div class="s-fill" id="blurF"></div>
-                <input type="range" id="blur" min="0" max="100" value="0" />
-              </div>
+              <div class="s-row"><label for="blur">Blur</label><span class="s-val" id="blurV">0</span></div>
+              <sp-slider id="blur" min="0" max="100" value="0" hide-stepper></sp-slider>
             </div>
           </div>
           <div class="sec">
             <div class="grp">Vintage</div>
             <div class="s">
-              <div class="s-row"><label>Fade</label><span class="s-val" id="fadeV">0</span></div>
-              <div class="s-track">
-                <div class="s-fill" id="fadeF"></div>
-                <input type="range" id="fade" min="0" max="100" value="0" />
-              </div>
+              <div class="s-row"><label for="fade">Fade</label><span class="s-val" id="fadeV">0</span></div>
+              <sp-slider id="fade" min="0" max="100" value="0" hide-stepper></sp-slider>
             </div>
             <div class="s">
-              <div class="s-row"><label>Distress</label><span class="s-val" id="distressV">0</span></div>
-              <div class="s-track">
-                <div class="s-fill" id="distressF"></div>
-                <input type="range" id="distress" min="0" max="100" value="0" />
-              </div>
+              <div class="s-row"><label for="distress">Distress</label><span class="s-val" id="distressV">0</span></div>
+              <sp-slider id="distress" min="0" max="100" value="0" hide-stepper></sp-slider>
             </div>
             <div class="s">
-              <div class="s-row"><label>Ink Bleed</label><span class="s-val" id="bleedV">0</span></div>
-              <div class="s-track">
-                <div class="s-fill" id="bleedF"></div>
-                <input type="range" id="bleed" min="0" max="30" value="0" />
-              </div>
+              <div class="s-row"><label for="bleed">Ink Bleed</label><span class="s-val" id="bleedV">0</span></div>
+              <sp-slider id="bleed" min="0" max="30" value="0" hide-stepper></sp-slider>
             </div>
             <div class="s">
-              <div class="s-row"><label>Grain</label><span class="s-val" id="grainV">0</span></div>
-              <div class="s-track">
-                <div class="s-fill" id="grainF"></div>
-                <input type="range" id="grain" min="0" max="100" value="0" />
-              </div>
+              <div class="s-row"><label for="grain">Grain</label><span class="s-val" id="grainV">0</span></div>
+              <sp-slider id="grain" min="0" max="100" value="0" hide-stepper></sp-slider>
             </div>
             <div class="s">
-              <div class="s-row"><label>Effect</label></div>
-              <select id="effect">
-                <option value="none">No effect</option>
-                <option value="photocopy">Photocopy</option>
-                <option value="newspaper">Newspaper</option>
-              </select>
+              <div class="s-row"><label for="effect">Effect</label></div>
+              <sp-dropdown id="effect" placeholder="No effect">
+                <sp-menu slot="options">
+                  <sp-menu-item value="none" selected>No effect</sp-menu-item>
+                  <sp-menu-item value="photocopy">Photocopy</sp-menu-item>
+                  <sp-menu-item value="newspaper">Newspaper</sp-menu-item>
+                </sp-menu>
+              </sp-dropdown>
             </div>
           </div>
         </div>
@@ -199,60 +200,48 @@
           <div class="sec">
             <div class="grp">Settings</div>
             <div class="s">
-              <div class="s-row"><label>LPI (frequency)</label><span class="s-val" id="lpiV">45</span></div>
-              <div class="s-track">
-                <div class="s-fill" id="lpiF"></div>
-                <input type="range" id="lpi" min="20" max="100" value="45" />
-              </div>
+              <div class="s-row"><label for="lpi">LPI (frequency)</label><span class="s-val" id="lpiV">45</span></div>
+              <sp-slider id="lpi" min="20" max="100" value="45" hide-stepper></sp-slider>
             </div>
             <div class="s">
-              <div class="s-row"><label>Angle</label><span class="s-val" id="htAngleV">45</span></div>
-              <div class="s-track">
-                <div class="s-fill" id="htAngleF"></div>
-                <input type="range" id="htAngle" min="0" max="90" value="45" step="15" />
-              </div>
+              <div class="s-row"><label for="htAngle">Angle</label><span class="s-val" id="htAngleV">45</span></div>
+              <sp-slider id="htAngle" min="0" max="90" value="45" step="15" hide-stepper></sp-slider>
             </div>
             <div class="s">
-              <div class="s-row"><label>Dot Size</label><span class="s-val" id="htSizeV">8</span></div>
-              <div class="s-track">
-                <div class="s-fill" id="htSizeF"></div>
-                <input type="range" id="htSize" min="4" max="30" value="8" />
-              </div>
+              <div class="s-row"><label for="htSize">Dot Size</label><span class="s-val" id="htSizeV">8</span></div>
+              <sp-slider id="htSize" min="4" max="30" value="8" hide-stepper></sp-slider>
             </div>
             <div class="s">
-              <div class="s-row"><label>Dot Gain</label><span class="s-val" id="dotGainV">0</span></div>
-              <div class="s-track">
-                <div class="s-fill" id="dotGainF"></div>
-                <input type="range" id="dotGain" min="0" max="40" value="0" />
-              </div>
+              <div class="s-row"><label for="dotGain">Dot Gain</label><span class="s-val" id="dotGainV">0</span></div>
+              <sp-slider id="dotGain" min="0" max="40" value="0" hide-stepper></sp-slider>
             </div>
             <div class="s">
-              <div class="s-row"><label>Amount</label><span class="s-val" id="halftoneV">100</span></div>
-              <div class="s-track">
-                <div class="s-fill" id="halftoneF"></div>
-                <input type="range" id="halftone" min="0" max="100" value="100" />
-              </div>
+              <div class="s-row"><label for="halftone">Amount</label><span class="s-val" id="halftoneV">100</span></div>
+              <sp-slider id="halftone" min="0" max="100" value="100" hide-stepper></sp-slider>
             </div>
             <div class="channel-row" style="margin-top: 2px">
               <input type="color" id="htColor" value="#000000" /><span>Ink Colour</span>
             </div>
           </div>
-          <div class="actions"><button class="btn primary" id="applyHalftone">Apply halftone</button></div>
+          <div class="actions"><sp-button variant="cta" id="applyHalftone">Apply halftone</sp-button></div>
         </div>
 
         <div class="pane" id="p4">
           <div class="sec">
             <div class="grp">Target Colour Count</div>
             <div class="chips" id="colorChips">
-              <button class="chip" data-colors="2">2</button><button class="chip" data-colors="3">3</button>
-              <button class="chip on" data-colors="4">4</button><button class="chip" data-colors="6">6</button>
-              <button class="chip" data-colors="8">8</button><button class="chip" data-colors="10">10</button>
+              <sp-action-button data-colors="2">2</sp-action-button>
+              <sp-action-button data-colors="3">3</sp-action-button>
+              <sp-action-button selected data-colors="4">4</sp-action-button>
+              <sp-action-button data-colors="6">6</sp-action-button>
+              <sp-action-button data-colors="8">8</sp-action-button>
+              <sp-action-button data-colors="10">10</sp-action-button>
             </div>
             <p class="hint">Creates one real, named, coloured layer per detected colour — not a flattened raster.</p>
           </div>
           <div class="actions">
-            <button class="btn primary" id="reduceColors">Split into colour layers</button>
-            <button class="btn" id="exportSpots">Export spot channels + PNG</button>
+            <sp-button variant="cta" id="reduceColors">Split into colour layers</sp-button>
+            <sp-button variant="secondary" id="exportSpots">Export spot channels + PNG</sp-button>
           </div>
           <div class="sec" id="channelEditor"></div>
         </div>
@@ -261,43 +250,36 @@
           <div class="sec">
             <div class="grp">Type</div>
             <div class="chips" id="sepChips">
-              <button class="chip on" data-sep="spot">Spot</button>
-              <button class="chip" data-sep="cmyk">CMYK</button>
-              <button class="chip" data-sep="simprocess">Sim Process</button>
+              <sp-action-button selected data-sep="spot">Spot</sp-action-button>
+              <sp-action-button data-sep="cmyk">CMYK</sp-action-button>
+              <sp-action-button data-sep="simprocess">Sim Process</sp-action-button>
             </div>
           </div>
           <div class="sec" id="sepColorCountSec">
             <div class="grp">Colour Count</div>
             <div class="chips" id="sepColorChips">
-              <button class="chip" data-sepcolors="2">2</button><button class="chip" data-sepcolors="3">3</button>
-              <button class="chip on" data-sepcolors="4">4</button><button class="chip" data-sepcolors="6">6</button>
-              <button class="chip" data-sepcolors="8">8</button>
+              <sp-action-button data-sepcolors="2">2</sp-action-button>
+              <sp-action-button data-sepcolors="3">3</sp-action-button>
+              <sp-action-button selected data-sepcolors="4">4</sp-action-button>
+              <sp-action-button data-sepcolors="6">6</sp-action-button>
+              <sp-action-button data-sepcolors="8">8</sp-action-button>
             </div>
           </div>
           <div class="sec">
             <div class="grp">Auto Options</div>
-            <label class="tog"
-              ><input type="checkbox" id="sepAutoHalftone" checked /><span
-                >Auto-halftone each channel (rotated angles)</span
-              ></label
-            >
-            <label class="tog"
-              ><input type="checkbox" id="sepRegMarks" checked /><span>Add registration marks</span></label
-            >
+            <sp-switch id="sepAutoHalftone" checked>Auto-halftone each channel (rotated angles)</sp-switch>
+            <sp-switch id="sepRegMarks" checked>Add registration marks</sp-switch>
             <div class="s">
-              <div class="s-row"><label>Choke</label><span class="s-val" id="sepChokeV">0</span></div>
-              <div class="s-track">
-                <div class="s-fill" id="sepChokeF"></div>
-                <input type="range" id="sepChoke" min="0" max="20" value="0" />
-              </div>
+              <div class="s-row"><label for="sepChoke">Choke</label><span class="s-val" id="sepChokeV">0</span></div>
+              <sp-slider id="sepChoke" min="0" max="20" value="0" hide-stepper></sp-slider>
             </div>
           </div>
-          <div class="actions"><button class="btn primary" id="autoSeparate">Auto separate</button></div>
+          <div class="actions"><sp-button variant="cta" id="autoSeparate">Auto separate</sp-button></div>
           <div class="sec">
             <div class="grp">Quick Tools</div>
             <div class="actions">
-              <button class="btn" id="shiftColors">Cycle colour palette</button>
-              <button class="btn" id="applyKnockout">Apply ink-saving knockout</button>
+              <sp-button variant="secondary" id="shiftColors">Cycle colour palette</sp-button>
+              <sp-button variant="secondary" id="applyKnockout">Apply ink-saving knockout</sp-button>
             </div>
           </div>
           <div class="stub-note">
@@ -312,48 +294,38 @@
           <div class="sec">
             <div class="grp">Underbase</div>
             <div class="s">
-              <div class="s-row"><label>White Density</label><span class="s-val" id="wDensityV">100</span></div>
-              <div class="s-track">
-                <div class="s-fill" id="wDensityF"></div>
-                <input type="range" id="wDensity" min="50" max="100" value="100" />
+              <div class="s-row">
+                <label for="wDensity">White Density</label><span class="s-val" id="wDensityV">100</span>
               </div>
+              <sp-slider id="wDensity" min="50" max="100" value="100" hide-stepper></sp-slider>
             </div>
             <div class="s">
-              <div class="s-row"><label>Choke</label><span class="s-val" id="wChokeV">0</span></div>
-              <div class="s-track">
-                <div class="s-fill" id="wChokeF"></div>
-                <input type="range" id="wChoke" min="0" max="20" value="0" />
-              </div>
+              <div class="s-row"><label for="wChoke">Choke</label><span class="s-val" id="wChokeV">0</span></div>
+              <sp-slider id="wChoke" min="0" max="20" value="0" hide-stepper></sp-slider>
             </div>
             <div class="s">
-              <div class="s-row"><label>Feather</label><span class="s-val" id="wFeatherV">0</span></div>
-              <div class="s-track">
-                <div class="s-fill" id="wFeatherF"></div>
-                <input type="range" id="wFeather" min="0" max="20" value="0" />
-              </div>
+              <div class="s-row"><label for="wFeather">Feather</label><span class="s-val" id="wFeatherV">0</span></div>
+              <sp-slider id="wFeather" min="0" max="20" value="0" hide-stepper></sp-slider>
             </div>
             <div class="s">
-              <div class="s-row"><label>Highlight Boost</label><span class="s-val" id="wHlV">0</span></div>
-              <div class="s-track">
-                <div class="s-fill" id="wHlF"></div>
-                <input type="range" id="wHl" min="0" max="100" value="0" />
-              </div>
+              <div class="s-row"><label for="wHl">Highlight Boost</label><span class="s-val" id="wHlV">0</span></div>
+              <sp-slider id="wHl" min="0" max="100" value="0" hide-stepper></sp-slider>
             </div>
           </div>
           <div class="actions">
-            <button class="btn primary" id="generateUnderbase">Generate white underbase</button>
+            <sp-button variant="cta" id="generateUnderbase">Generate white underbase</sp-button>
           </div>
         </div>
 
         <div class="pane" id="p7">
           <div class="sec">
             <div class="actions">
-              <button class="btn" id="removeStray">Remove isolated pixels</button>
-              <button class="btn" id="removeHalos">Remove white halos</button>
-              <button class="btn" id="removeJpeg">Fix JPEG artefacts</button>
-              <button class="btn" id="fixAI">Fix AI-generated artwork</button>
-              <button class="btn" id="smoothEdges">Smooth jagged edges</button>
-              <button class="btn" id="autoSharpen">Auto sharpen</button>
+              <sp-button variant="secondary" id="removeStray">Remove isolated pixels</sp-button>
+              <sp-button variant="secondary" id="removeHalos">Remove white halos</sp-button>
+              <sp-button variant="secondary" id="removeJpeg">Fix JPEG artefacts</sp-button>
+              <sp-button variant="secondary" id="fixAI">Fix AI-generated artwork</sp-button>
+              <sp-button variant="secondary" id="smoothEdges">Smooth jagged edges</sp-button>
+              <sp-button variant="secondary" id="autoSharpen">Auto sharpen</sp-button>
             </div>
             <p class="hint">Each fix creates a new layer in the Cleanup group. Original untouched.</p>
           </div>
@@ -363,28 +335,24 @@
           <div class="sec">
             <div class="grp">Fabric</div>
             <div class="chips" id="garmentChips">
-              <button class="chip on" data-garment="white">White</button
-              ><button class="chip" data-garment="black">Black</button>
-              <button class="chip" data-garment="heather">Heather</button
-              ><button class="chip" data-garment="navy">Navy</button>
-              <button class="chip" data-garment="grey">Grey</button
-              ><button class="chip" data-garment="coloured">Colour</button>
+              <sp-action-button selected data-garment="white">White</sp-action-button>
+              <sp-action-button data-garment="black">Black</sp-action-button>
+              <sp-action-button data-garment="heather">Heather</sp-action-button>
+              <sp-action-button data-garment="navy">Navy</sp-action-button>
+              <sp-action-button data-garment="grey">Grey</sp-action-button>
+              <sp-action-button data-garment="coloured">Colour</sp-action-button>
             </div>
           </div>
-          <label class="tog"
-            ><input type="checkbox" id="autoUnderbase" checked /><span
-              >Auto white underbase on dark garments</span
-            ></label
-          >
-          <div class="actions"><button class="btn primary" id="applyGarment">Optimise for garment</button></div>
+          <sp-switch id="autoUnderbase" checked>Auto white underbase on dark garments</sp-switch>
+          <div class="actions"><sp-button variant="cta" id="applyGarment">Optimise for garment</sp-button></div>
         </div>
 
         <div class="pane" id="p9">
           <div class="sec">
             <div class="grp">Mode</div>
             <div class="chips" id="dtModeChips">
-              <button class="chip on" data-dtmode="dtg">DTG</button>
-              <button class="chip" data-dtmode="dtf">DTF</button>
+              <sp-action-button selected data-dtmode="dtg">DTG</sp-action-button>
+              <sp-action-button data-dtmode="dtf">DTF</sp-action-button>
             </div>
           </div>
 
@@ -392,33 +360,30 @@
             <div class="sec">
               <div class="grp">Printer</div>
               <div class="chips" id="dtgChips">
-                <button class="chip on" data-dtg="epson">Epson</button
-                ><button class="chip" data-dtg="brother">Brother</button>
-                <button class="chip" data-dtg="kornit">Kornit</button
-                ><button class="chip" data-dtg="other">Other</button>
+                <sp-action-button selected data-dtg="epson">Epson</sp-action-button>
+                <sp-action-button data-dtg="brother">Brother</sp-action-button>
+                <sp-action-button data-dtg="kornit">Kornit</sp-action-button>
+                <sp-action-button data-dtg="other">Other</sp-action-button>
               </div>
             </div>
             <div class="sec">
               <div class="s">
-                <div class="s-row"><label>Ink Reduction</label><span class="s-val" id="dtgInkV">0</span></div>
-                <div class="s-track">
-                  <div class="s-fill" id="dtgInkF"></div>
-                  <input type="range" id="dtgInk" min="0" max="40" value="0" />
+                <div class="s-row">
+                  <label for="dtgInk">Ink Reduction</label><span class="s-val" id="dtgInkV">0</span>
                 </div>
+                <sp-slider id="dtgInk" min="0" max="40" value="0" hide-stepper></sp-slider>
               </div>
               <div class="s">
-                <div class="s-row"><label>White Boost</label><span class="s-val" id="dtgWhiteV">0</span></div>
-                <div class="s-track">
-                  <div class="s-fill" id="dtgWhiteF"></div>
-                  <input type="range" id="dtgWhite" min="0" max="40" value="0" />
+                <div class="s-row">
+                  <label for="dtgWhite">White Boost</label><span class="s-val" id="dtgWhiteV">0</span>
                 </div>
+                <sp-slider id="dtgWhite" min="0" max="40" value="0" hide-stepper></sp-slider>
               </div>
               <div class="s">
-                <div class="s-row"><label>Detail Preserve</label><span class="s-val" id="dtgDetailV">0</span></div>
-                <div class="s-track">
-                  <div class="s-fill" id="dtgDetailF"></div>
-                  <input type="range" id="dtgDetail" min="0" max="100" value="0" />
+                <div class="s-row">
+                  <label for="dtgDetail">Detail Preserve</label><span class="s-val" id="dtgDetailV">0</span>
                 </div>
+                <sp-slider id="dtgDetail" min="0" max="100" value="0" hide-stepper></sp-slider>
               </div>
             </div>
           </div>
@@ -427,60 +392,55 @@
             <div class="sec">
               <div class="grp">Film Type</div>
               <div class="chips" id="dtfChips">
-                <button class="chip on" data-dtf="standard">Standard</button
-                ><button class="chip" data-dtf="matte">Matte</button>
-                <button class="chip" data-dtf="soft">Soft Feel</button
-                ><button class="chip" data-dtf="stretch">Stretch</button>
+                <sp-action-button selected data-dtf="standard">Standard</sp-action-button>
+                <sp-action-button data-dtf="matte">Matte</sp-action-button>
+                <sp-action-button data-dtf="soft">Soft Feel</sp-action-button>
+                <sp-action-button data-dtf="stretch">Stretch</sp-action-button>
               </div>
             </div>
             <div class="sec">
               <div class="s">
-                <div class="s-row"><label>Colour Boost</label><span class="s-val" id="dtfColV">0</span></div>
-                <div class="s-track">
-                  <div class="s-fill" id="dtfColF"></div>
-                  <input type="range" id="dtfCol" min="0" max="40" value="0" />
+                <div class="s-row">
+                  <label for="dtfCol">Colour Boost</label><span class="s-val" id="dtfColV">0</span>
                 </div>
+                <sp-slider id="dtfCol" min="0" max="40" value="0" hide-stepper></sp-slider>
               </div>
               <div class="s">
-                <div class="s-row"><label>Ink Reduction</label><span class="s-val" id="dtfInkV">0</span></div>
-                <div class="s-track">
-                  <div class="s-fill" id="dtfInkF"></div>
-                  <input type="range" id="dtfInk" min="0" max="40" value="0" />
+                <div class="s-row">
+                  <label for="dtfInk">Ink Reduction</label><span class="s-val" id="dtfInkV">0</span>
                 </div>
+                <sp-slider id="dtfInk" min="0" max="40" value="0" hide-stepper></sp-slider>
               </div>
               <div class="s">
-                <div class="s-row"><label>Sharpening</label><span class="s-val" id="dtfSharpV">0</span></div>
-                <div class="s-track">
-                  <div class="s-fill" id="dtfSharpF"></div>
-                  <input type="range" id="dtfSharp" min="0" max="100" value="0" />
+                <div class="s-row">
+                  <label for="dtfSharp">Sharpening</label><span class="s-val" id="dtfSharpV">0</span>
                 </div>
+                <sp-slider id="dtfSharp" min="0" max="100" value="0" hide-stepper></sp-slider>
               </div>
             </div>
           </div>
 
           <div class="sec">
             <div class="grp">Halftone Screen</div>
-            <label class="tog"
-              ><input type="checkbox" id="dtHalftone" /><span
-                >Render the flattened output as a halftone (reuses the Halftone tab's LPI / Angle / Dot Gain / Ink
-                Colour)</span
-              ></label
+            <sp-switch id="dtHalftone"
+              >Render the flattened output as a halftone (reuses the Halftone tab's LPI / Angle / Dot Gain / Ink
+              Colour)</sp-switch
             >
           </div>
 
-          <div class="actions"><button class="btn primary" id="applyDT">Apply DT optimisation</button></div>
+          <div class="actions"><sp-button variant="cta" id="applyDT">Apply DT optimisation</sp-button></div>
         </div>
 
         <div class="pane" id="p10">
           <div class="sec">
             <div class="grp">Garment Colour</div>
             <div class="chips" id="previewGarmentChips">
-              <button class="chip on" data-prevgarment="white">White</button
-              ><button class="chip" data-prevgarment="black">Black</button>
-              <button class="chip" data-prevgarment="heather">Heather</button
-              ><button class="chip" data-prevgarment="navy">Navy</button>
-              <button class="chip" data-prevgarment="red">Red</button
-              ><button class="chip" data-prevgarment="sand">Sand</button>
+              <sp-action-button selected data-prevgarment="white">White</sp-action-button>
+              <sp-action-button data-prevgarment="black">Black</sp-action-button>
+              <sp-action-button data-prevgarment="heather">Heather</sp-action-button>
+              <sp-action-button data-prevgarment="navy">Navy</sp-action-button>
+              <sp-action-button data-prevgarment="red">Red</sp-action-button>
+              <sp-action-button data-prevgarment="sand">Sand</sp-action-button>
             </div>
           </div>
           <div class="stub-note">
@@ -495,40 +455,42 @@
             <div class="prod-label">Printability Score</div>
             <div class="prod-detail" id="prodDetail">Run check to see results.</div>
           </div>
-          <div class="actions"><button class="btn primary" id="runProduction">Run production check</button></div>
+          <div class="actions"><sp-button variant="cta" id="runProduction">Run production check</sp-button></div>
         </div>
 
         <div class="pane" id="p12">
           <div class="sec">
             <div class="grp">Screen Print</div>
             <div class="actions">
-              <button class="btn" id="exportScreen">Export B&amp;W screens + registration</button>
+              <sp-button variant="secondary" id="exportScreen">Export B&amp;W screens + registration</sp-button>
             </div>
           </div>
           <div class="sec">
             <div class="grp">DTG</div>
-            <div class="actions"><button class="btn" id="exportDTG">Export flat alpha PNG</button></div>
+            <div class="actions"><sp-button variant="secondary" id="exportDTG">Export flat alpha PNG</sp-button></div>
           </div>
           <div class="sec">
             <div class="grp">DTF</div>
-            <div class="actions"><button class="btn" id="exportDTF">Export DTF-ready PNG</button></div>
+            <div class="actions"><sp-button variant="secondary" id="exportDTF">Export DTF-ready PNG</sp-button></div>
           </div>
         </div>
 
         <div class="pane" id="p13">
           <div class="sec">
             <div class="grp">Built-in Presets</div>
-            <div class="preset-cat-chips">
-              <button class="preset-cat-chip on" data-cat="printer">Printer</button>
-              <button class="preset-cat-chip" data-cat="garment">Garment</button>
-              <button class="preset-cat-chip" data-cat="style">Style</button>
+            <div class="chips" id="presetCatChips">
+              <sp-action-button selected data-cat="printer">Printer</sp-action-button>
+              <sp-action-button data-cat="garment">Garment</sp-action-button>
+              <sp-action-button data-cat="style">Style</sp-action-button>
             </div>
             <div id="builtinList"></div>
           </div>
           <div class="sec">
             <div class="grp">My Presets</div>
-            <input type="text" id="presetNameInput" placeholder="Name this preset" />
-            <div class="actions"><button class="btn" id="saveUserPreset">Save current settings</button></div>
+            <sp-textfield type="text" id="presetNameInput" placeholder="Name this preset"></sp-textfield>
+            <div class="actions">
+              <sp-button variant="secondary" id="saveUserPreset">Save current settings</sp-button>
+            </div>
             <div id="userPresetList"><p class="hint">No saved presets yet.</p></div>
           </div>
         </div>
@@ -541,7 +503,9 @@
               read/write, a single-pixel modify, then the real halftone algorithm at small scale. Stops at the first
               failure. Copy the full log below to share.
             </p>
-            <div class="actions"><button class="btn primary" id="runDiagnostics">Run all diagnostic tests</button></div>
+            <div class="actions">
+              <sp-button variant="cta" id="runDiagnostics">Run all diagnostic tests</sp-button>
+            </div>
           </div>
           <div class="sec">
             <div class="grp">Log</div>
@@ -551,16 +515,16 @@
       </div>
 
       <div class="bar hide" id="applyBar">
-        <button class="bar-reset" id="resetAll">Reset</button>
-        <button class="bar-apply" id="applyVintage">Apply</button>
+        <sp-button variant="secondary" id="resetAll">Reset</sp-button>
+        <sp-button variant="cta" id="applyVintage">Apply</sp-button>
       </div>
 
       <div class="foot">
         <div class="msg" id="status"><span id="statusText">Photoneshop ready</span></div>
         <div class="foot-tools">
           <span class="cov">Ink <strong id="coverageVal">—</strong></span>
-          <button class="mini" id="soloGroup">Solo</button>
-          <button class="mini" id="undoLast">Undo</button>
+          <sp-action-button quiet id="soloGroup">Solo</sp-action-button>
+          <sp-action-button quiet id="undoLast">Undo</sp-action-button>
         </div>
       </div>
     </div>

@@ -55,7 +55,6 @@ window.PhotoneshopInit = (function () {
       "chk",
       "activeChip",
       "hexToRgb",
-      "fillSlider",
       "setSlider",
       "luminance",
       "selectOne",

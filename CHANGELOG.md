@@ -1,5 +1,88 @@
 # Changelog
 
+## v5.4.0 — UI-only migration to native UXP Spectrum elements
+
+Every custom-styled HTML control is replaced with UXP's built-in Spectrum
+custom elements (`sp-*`) — no bundler, no new dependency, no manifest change:
+UXP hosts (Photoshop 23.3+, this plugin's declared `minVersion`) render these
+tags natively, the same way `<input type="color">` already "just worked."
+This keeps the plugin's zero-runtime-dependency architecture (see v5.2.7's
+rationale against introducing a build step) — `index.html`'s `<script>` tags
+are untouched, only their content changed.
+
+**Scope discipline:** no file under `engines/`, `ai/`, or the halftone/pixel
+pipeline had its logic touched. The only edits to `.js` files were the DOM
+glue that reads/writes control values (`core/api.js`'s `val`/`num`/`chk`/
+`setSlider`/`activeChip`/`selectOne`, `ui/panels.js`'s event wiring, two
+dynamically-generated markup strings in `ai/analysis.js` and
+`presets/index.js`) — never the batchPlay descriptors, image-processing
+math, or Photoshop API calls those functions feed into. Confirmed by: all 41
+Vitest tests (which exercise the real engine functions) still pass unmodified.
+
+### Control mapping
+
+| Was                                                                                               | Now                                                                                                                                                                                          |
+| ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.nav button` × 14 (custom tab strip)                                                             | `sp-tabs` + `sp-tab` (slotted two-line label, same tag sub-caption)                                                                                                                          |
+| `.chip` × 8 groups, `.target-btn` × 3, `.preset-cat-chip` × 3 (hand-rolled single-select buttons) | `sp-action-button` with the `selected` property/attribute driving the pressed state (was a `.on` CSS class)                                                                                  |
+| `.btn` / `.btn.primary` × ~34                                                                     | `sp-button` (`variant="cta"` for what was `.primary`, `variant="secondary"` otherwise)                                                                                                       |
+| `.mini` (footer Solo/Undo), modal close, preset star/delete                                       | `sp-action-button` (`quiet`)                                                                                                                                                                 |
+| `input[type=range]` × 27 + the `.s-fill`/`.s-track` manual fill-bar div/CSS/JS                    | `sp-slider` (renders its own track/fill/thumb — the fill-bar machinery is gone entirely)                                                                                                     |
+| `input[type=text]` × 3                                                                            | `sp-textfield` (`type="number"` for the two resize dimensions)                                                                                                                               |
+| `<select id="effect">`                                                                            | `sp-dropdown` + `sp-menu`/`sp-menu-item`                                                                                                                                                     |
+| `.toggle-switch` (RGB/CMYK sliding 2-way toggle)                                                  | 2 `sp-action-button`s (it's an exclusive choice, not a boolean — doesn't fit `sp-switch`)                                                                                                    |
+| 4 `.tog`-wrapped checkboxes (`autoUnderbase`, `dtHalftone`, `sepAutoHalftone`, `sepRegMarks`)     | `sp-switch` (these are boolean feature toggles — the semantically correct Spectrum component)                                                                                                |
+| `.deep-progress-bar`/`.deep-progress-fill` manual 2-div fill bar                                  | `sp-progressbar`                                                                                                                                                                             |
+| `.modal-card`/`.modal-head h3`/`.modal-close`                                                     | `sp-dialog` + `sp-heading` + `sp-action-button`, inside the **same** `.modal-overlay` backdrop div and open/close JS as before (that logic was already correct and isn't Spectrum's concern) |
+| `<input type="color">` (ink colour, channel swatches)                                             | **Unchanged** — not on the requested replacement list, and already a native host control                                                                                                     |
+
+### Removed (obsolete once the native components render their own chrome)
+
+`fillSlider()` and every `#idF` fill-bar element/CSS rule, `.toggle-switch*`/
+`.toggle-thumb`, `input[type=range]*` CSS, `select*` CSS, `.chip*`/`.btn*`/
+`.tog*`/`.target-btn*`/`.nav button*`/`.preset-cat-chip*`/`.preset-item-btn*`/
+`.mini*`/`.bar-reset*`/`.bar-apply*`/`.modal-close*`/`.modal-card`/
+`input[type=text]*` CSS (`ui/styles.css` net -390 lines). Layout-only rules
+(`.sec`, `.s-row`, `.actions`, `.chips` wrapper, `.hint`, score cards, stat
+grids, etc.) are unchanged — those aren't "controls," they're page structure.
+
+### Adapted (same behaviour, new element type)
+
+- `core/api.js`: `activeChip()` now queries `sp-action-button[selected]`
+  instead of `.chip.on`; `selectOne()` toggles the `.selected` property
+  instead of a CSS class; `setSlider()` no longer calls the deleted
+  `fillSlider()`. `val`/`num`/`chk`/`bind` are unchanged — they read generic
+  `.value`/`.checked` properties and attach native `click` listeners, which
+  Spectrum elements mirror.
+- `ui/panels.js`: `initTabs()` rewritten around `sp-tabs`' own `change` event
+  and `.selected` property (previously 14 individual click listeners);
+  `initChips()`/`initLayerTarget()`/`initDTStudio()` updated to the
+  `sp-action-button` selector and property; `initSliders()` drops the
+  `fillSlider()` call. Removed two dead selector strings (`#htPattern`,
+  `#ditherChips` — elements that never existed in any shipped HTML).
+- `ai/analysis.js`: `updateColourModeToggle()` toggles `.selected` on two
+  `sp-action-button`s instead of `.on`/`.right` classes; `setBar()` sets
+  `sp-progressbar`'s `.progress` property instead of a div's `style.width`;
+  the dynamically-generated Deep Analysis progress bar and "Apply these
+  halftone settings" button markup updated to match.
+- `presets/index.js`: `renderBuiltinPresets()`/`renderUserPresets()` generate
+  `sp-action-button` markup instead of `<button>`; `initBuiltinCategoryChips()`
+  targets the new `#presetCatChips` container instead of a global
+  `.preset-cat-chip` class.
+
+### Honest caveat
+
+This environment has no live Photoshop/UXP host to render against — the
+Vitest suite runs in a Node `vm`, not a browser, so it cannot and does not
+verify visual rendering or confirm the exact attribute/event names UXP's
+Spectrum elements expect (`sp-tabs`' `selected`/`change`, `sp-dropdown`'s
+`slot="options"`, `sp-slider`'s clamp-on-assignment behaviour, etc.) are
+correct at runtime. These are implemented per Adobe's documented UXP Spectrum
+element reference to the best of available knowledge, and the DOM glue is
+written defensively (generic `.value`/`.checked` reads, graceful `if (el)`
+guards throughout) — but **this needs a pass in a real Photoshop panel
+before shipping** to confirm every control renders and responds as intended.
+
 ## v5.3.2 — Audit Phase 0: grayscale consistency, dedup, one bad descriptor key
 
 Executes the 4 "safest, no visible behaviour change" items from a full read-only

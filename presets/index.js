@@ -780,8 +780,7 @@ function renderBuiltinPresets(category) {
   let data = category === "printer" ? PRINTER_PRESETS : category === "garment" ? GARMENT_PRESETS : STYLE_PRESETS;
   list.innerHTML = "";
   data.forEach(function (preset) {
-    let btn = document.createElement("button");
-    btn.className = "preset-item-btn";
+    let btn = document.createElement("sp-action-button");
     btn.textContent = preset.name;
     btn.addEventListener("click", function () {
       applyValues(preset);
@@ -810,21 +809,21 @@ function renderUserPresets() {
   sorted.forEach(function (p) {
     html +=
       '<div class="preset-row">' +
-      '<button class="star ' +
-      (p.fav ? "on" : "") +
-      '" data-fav="' +
+      '<sp-action-button quiet class="star"' +
+      (p.fav ? " selected" : "") +
+      ' data-fav="' +
       encodeURIComponent(p.name) +
       '">' +
       (p.fav ? "\u2605" : "\u2606") +
-      "</button>" +
+      "</sp-action-button>" +
       '<span class="preset-name" data-load="' +
       encodeURIComponent(p.name) +
       '">' +
       p.name +
       "</span>" +
-      '<button class="del" data-del="' +
+      '<sp-action-button quiet class="del" data-del="' +
       encodeURIComponent(p.name) +
-      '">\u00d7</button>' +
+      '">\u00d7</sp-action-button>' +
       "</div>";
   });
   list.innerHTML = html;
@@ -861,9 +860,9 @@ function renderUserPresets() {
 
 /* ---- CATEGORY CHIP INIT ---- */
 function initBuiltinCategoryChips() {
-  document.querySelectorAll(".preset-cat-chip").forEach(function (c) {
+  document.querySelectorAll("#presetCatChips sp-action-button").forEach(function (c) {
     c.addEventListener("click", function (e) {
-      selectOne(".preset-cat-chip", e.currentTarget); // core/api.js
+      selectOne("#presetCatChips sp-action-button", e.currentTarget); // core/api.js
       renderBuiltinPresets(e.currentTarget.dataset.cat);
     });
   });

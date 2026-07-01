@@ -3,15 +3,23 @@
  * Loaded last; all engine functions already defined.
  */
 
+// sp-tabs owns its own single-selection state (the "selected" attribute on
+// the <sp-tabs> container itself, not a per-tab class) — unlike the chip
+// groups, this is not a selectOne() case. Content panes stay plain divs
+// shown/hidden by class, exactly as before.
 function initTabs() {
-  document.querySelectorAll(".nav button").forEach(function (t) {
-    t.addEventListener("click", function (e) {
-      let n = parseInt(e.currentTarget.dataset.tab, 10);
+  let tabs = document.getElementById("navTabs");
+  if (tabs) {
+    tabs.addEventListener("change", function () {
+      let n = parseInt(tabs.selected, 10);
+      if (!n) return;
       clearPreviewTimer(); // FIX 2.2: Clear timer on tab switch to prevent accumulation
       _currentTab = n; // defined in core/preview.js
-      selectOne(".nav button", e.currentTarget); // core/api.js
+      document.querySelectorAll(".pane").forEach(function (x) {
+        x.classList.remove("on");
+      });
       let pane = document.getElementById("p" + n);
-      selectOne(".pane", pane); // core/api.js
+      if (pane) pane.classList.add("on");
       let bar = document.getElementById("applyBar");
       if (bar) bar.classList.toggle("hide", !EDIT_PANES[n]);
       let body = document.querySelector(".body");
@@ -19,7 +27,7 @@ function initTabs() {
       // Cancel preview when leaving an edit pane
       if (!EDIT_PANES[n] && (_previewActive || _sourceReady)) cancelPreview();
     });
-  });
+  }
   // Set initial apply bar state
   let bar = document.getElementById("applyBar");
   if (bar) bar.classList.toggle("hide", !EDIT_PANES[_currentTab]);
@@ -88,10 +96,9 @@ function initSliders() {
     let el = document.getElementById(id);
     let out = document.getElementById(id + "V");
     if (!el) return;
-    fillSlider(el); // defined in core/api.js
+    if (out) out.textContent = el.value; // sync label to sp-slider's initial value
     el.addEventListener("input", function () {
       if (out) out.textContent = el.value;
-      fillSlider(el);
       if (LIVE_SLIDERS.indexOf(id) !== -1 && hasDoc() && EDIT_PANES[_currentTab]) {
         schedulePreview(); // defined in core/preview.js
       }
@@ -115,22 +122,20 @@ function initChips() {
   [
     "#garmentChips",
     "#colorChips",
-    "#htPattern",
-    "#ditherChips",
     "#sepChips",
     "#sepColorChips",
     "#dtgChips",
     "#dtfChips",
     "#previewGarmentChips",
   ].forEach(function (sel) {
-    document.querySelectorAll(sel + " button").forEach(function (c) {
+    document.querySelectorAll(sel + " sp-action-button").forEach(function (c) {
       c.addEventListener("click", function (e) {
-        selectOne(sel + " button", e.currentTarget); // core/api.js
+        selectOne(sel + " sp-action-button", e.currentTarget); // core/api.js
       });
     });
   });
   // CMYK is always exactly 4 fixed channels — hide the colour-count picker for it.
-  document.querySelectorAll("#sepChips button").forEach(function (b) {
+  document.querySelectorAll("#sepChips sp-action-button").forEach(function (b) {
     b.addEventListener("click", function () {
       let sec = document.getElementById("sepColorCountSec");
       if (sec) sec.style.display = b.dataset.sep === "cmyk" ? "none" : "";
@@ -139,9 +144,9 @@ function initChips() {
 }
 
 function initLayerTarget() {
-  document.querySelectorAll(".target-btn").forEach(function (b) {
+  document.querySelectorAll(".target-strip sp-action-button").forEach(function (b) {
     b.addEventListener("click", function (e) {
-      selectOne(".target-btn", e.currentTarget); // core/api.js
+      selectOne(".target-strip sp-action-button", e.currentTarget); // core/api.js
       setLayerTarget(e.currentTarget.dataset.target); // defined in core/history.js
       setStatus("Target: " + e.currentTarget.textContent.trim(), "info");
     });
@@ -153,9 +158,9 @@ function initLayerTarget() {
 // live-preview refresh when toggled (its value is read directly via chk("dtHalftone")
 // everywhere else).
 function initDTStudio() {
-  document.querySelectorAll("#dtModeChips button").forEach(function (b) {
+  document.querySelectorAll("#dtModeChips sp-action-button").forEach(function (b) {
     b.addEventListener("click", function (e) {
-      selectOne("#dtModeChips button", e.currentTarget); // core/api.js
+      selectOne("#dtModeChips sp-action-button", e.currentTarget); // core/api.js
       let mode = e.currentTarget.dataset.dtmode;
       setDTMode(mode); // engines/print.js
       document.querySelectorAll(".dt-dtg-only").forEach(function (el) {

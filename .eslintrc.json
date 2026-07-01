@@ -36,7 +36,6 @@
     "opUnsharp": "readonly",
     "setWriteInProgress": "readonly",
     "getWriteInProgress": "readonly",
-    "fillSlider": "readonly",
     "setSlider": "readonly",
     "luminance": "readonly",
     "selectOne": "readonly",

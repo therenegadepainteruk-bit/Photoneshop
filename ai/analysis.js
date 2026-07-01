@@ -350,7 +350,7 @@ async function runDeepAnalysis() {
     body.innerHTML =
       '<div class="deep-progress">' +
       '<div class="hint">Scanning artwork at high resolution\u2026</div>' +
-      '<div class="deep-progress-bar"><div class="deep-progress-fill" id="deepBar"></div></div>' +
+      '<sp-progressbar class="deep-progress-bar" id="deepBar" min="0" max="100" progress="0"></sp-progressbar>' +
       "</div>";
   }
 
@@ -516,7 +516,7 @@ async function runDeepAnalysis() {
 
 function setBar(pct) {
   let bar = document.getElementById("deepBar");
-  if (bar) bar.style.width = pct + "%";
+  if (bar) bar.progress = pct;
 }
 
 function renderDeepResults(r) {
@@ -555,7 +555,7 @@ function renderDeepResults(r) {
     '<div class="deep-rec-sub">' +
     r.lpiReason +
     "</div></div>" +
-    '<button class="btn" id="applyDeepHalftone" style="margin-top:6px;">Apply these halftone settings</button>' +
+    '<sp-button variant="secondary" id="applyDeepHalftone" style="margin-top:6px;">Apply these halftone settings</sp-button>' +
     "</div>";
 
   html +=
@@ -627,21 +627,21 @@ async function setColourMode(mode) {
   }
 }
 
+// RGB/CMYK is a 2-way exclusive choice (not a boolean), so it's a chip pair
+// (sp-action-button, .selected property) rather than a single sp-switch.
 function updateColourModeToggle() {
   let rgbBtn = document.getElementById("toggleRGB");
   let cmykBtn = document.getElementById("toggleCMYK");
-  let sw = document.getElementById("colourModeToggle");
   if (!rgbBtn || !cmykBtn) return;
   if (!hasDoc()) {
-    rgbBtn.classList.remove("on");
-    cmykBtn.classList.remove("on");
+    rgbBtn.selected = false;
+    cmykBtn.selected = false;
     return;
   }
   let mode = (window.app.activeDocument.mode || "").toString();
   let isCMYK = mode.indexOf("CMYK") !== -1;
-  rgbBtn.classList.toggle("on", !isCMYK);
-  cmykBtn.classList.toggle("on", isCMYK);
-  if (sw) sw.classList.toggle("right", isCMYK);
+  rgbBtn.selected = !isCMYK;
+  cmykBtn.selected = isCMYK;
 }
 
 // Feeds the Production Centre tab (tab 12) with the same analysis

@@ -1,4 +1,4 @@
-# Photoneshop v5.3.2
+# Photoneshop v5.4.0
 
 Photoshop UXP plugin for DTF / DTG / screen-print garment workflows.
 
@@ -75,9 +75,23 @@ Folder-copy installs do not work; UXP requires sideloading via UDT.
 | Screen Studio tab (was "Separation")                             | **Working** — channel split + simultaneous per-channel halftone; advanced spread/vector crop marks planned        |
 | DT Studio tab (was "DTG" + "DTF")                                | **Working** — combined DTG/DTF optimisation with an opt-in halftone-screen finishing step (real pixel renderer)   |
 | Garment Preview tab                                              | Stub                                                                                                              |
-| UI                                                               | 14 tabs                                                                                                           |
+| UI                                                               | 14 tabs, native UXP Spectrum elements (`sp-*`) — **not yet verified in a live Photoshop panel**, see v5.4.0 note  |
 
 See `CHANGELOG.md` and `INTEGRATION-REPORT-v5.2.1.md` for detail.
+
+## v5.4.0 note
+
+Every custom-styled control (buttons, sliders, text fields, the dropdown, tabs,
+toggles, the progress bar, the dialog) was replaced with UXP's native Spectrum
+elements (`sp-button`, `sp-slider`, `sp-textfield`, `sp-dropdown`, `sp-tabs`,
+`sp-switch`, `sp-action-button`, `sp-progressbar`, `sp-dialog`) — a UI-only
+change, no `engines/`/`ai/` logic touched, all 41 tests still pass. **Honest
+caveat:** there's no live Photoshop/UXP host available to render against in
+this environment, so the exact attribute/event names these elements expect
+(`sp-tabs`' `change` event, `sp-dropdown`'s `slot="options"`, etc.) are
+implemented from documentation, not confirmed by seeing them render. Load the
+panel in real Photoshop and check every tab before shipping. See
+`CHANGELOG.md` for the full control-by-control mapping.
 
 ## v5.3.0 note
 
