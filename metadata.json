@@ -1,0 +1,6 @@
+{
+  "name": "GitHub Dashboard & Photoneshop Studio",
+  "description": "A complete developer dashboard with OAuth repositories, plus the premium Photoneshop Studio screenprint image-preparation and true 1-bit bitmap halftone engine.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
