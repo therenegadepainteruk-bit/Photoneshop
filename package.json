@@ -1,6 +1,6 @@
 {
   "name": "photoneshop",
-  "version": "5.2.6",
+  "version": "5.2.7",
   "private": true,
   "description": "Photoshop UXP plugin for DTF / DTG / screen-print garment workflows.",
   "main": "index.js",

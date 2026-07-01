@@ -159,8 +159,69 @@ function loadIsolated(rel) {
   return { ctx, fakePhotoshop };
 }
 
-// Load in dependency order. A throw here fails the run. api.js is loaded so the REAL
-// blocking guard() is under test (not a reimplementation).
+// The complete real load order from index.html (everything ui/panels.js depends on —
+// ui/panels.js itself isn't included since nothing in REQUIRED expects anything FROM it).
+const FULL_LOAD_ORDER = [
+  "core/memory.js",
+  "core/errors.js",
+  "core/validation.js",
+  "core/benchmark.js",
+  "core/api.js",
+  "core/preview.js",
+  "core/history.js",
+  "core/diagnostics.js",
+  "engines/vintage.js",
+  "engines/halftone.js",
+  "engines/halftone-tiled.js",
+  "engines/cleanup.js",
+  "engines/print.js",
+  "engines/separation.js",
+  "ai/analysis.js",
+  "presets/index.js",
+  "core/init-guard.js",
+];
+
+// Loads FULL_LOAD_ORDER (optionally skipping one file, to simulate a load failure)
+// into a fresh, isolated vm context. Used only to verify core/init-guard.js's
+// assertReady() against the real files — isolated so it can't affect the shared
+// context every other test in this suite depends on.
+function loadFullAppIsolated(skipFile) {
+  const sb = {
+    console: { log() {}, warn() {}, error() {} },
+    window: {},
+    document: { getElementById: () => null, querySelectorAll: () => [] },
+    Uint8Array,
+    Uint8ClampedArray,
+    Float32Array,
+    Math,
+    JSON,
+    Object,
+    Array,
+    Number,
+    String,
+    Boolean,
+    Error,
+    parseFloat,
+    parseInt,
+    require: () => ({
+      app: {},
+      core: {},
+      action: { batchPlay: async () => [] },
+      imaging: {},
+      storage: { localFileSystem: {} },
+      entrypoints: { setup() {} },
+    }),
+  };
+  sb.window = sb;
+  const ctx = vm.createContext(sb);
+  for (const rel of FULL_LOAD_ORDER) {
+    if (rel === skipFile) continue;
+    const p = path.join(ROOT, rel);
+    vm.runInContext(fs.readFileSync(p, "utf8"), ctx, { filename: rel });
+  }
+  return ctx;
+}
+
 let halftoneSrc = "";
 let loadOK = true;
 try {
@@ -525,6 +586,29 @@ const W = sandbox.window;
   test("autoSeparate is exported as a real function", () => {
     assertEqual(typeof context.autoSeparate, "function", "autoSeparate");
   });
+
+  // ---- core/init-guard.js (real) — the ES-modules-vs-UXP tradeoff -------------
+  console.log("\ncore/init-guard.js (real) — initialization safety net");
+  test("assertReady(): full real load order (matching index.html) throws nothing", () => {
+    const ctx = loadFullAppIsolated();
+    ctx.window.PhotoneshopInit.assertReady(); // throws on failure -> test fails
+  });
+  ["engines/print.js", "core/preview.js", "core/history.js", "ai/analysis.js", "engines/separation.js"].forEach(
+    (missingFile) => {
+      test("assertReady(): correctly detects and names a missing " + missingFile, () => {
+        const ctx = loadFullAppIsolated(missingFile);
+        let threw = null;
+        try {
+          ctx.window.PhotoneshopInit.assertReady();
+        } catch (e) {
+          threw = e;
+        }
+        assert(threw, "expected assertReady() to throw when " + missingFile + " failed to load");
+        assertEqual(threw.name, "PhotoneshopInitError", "error type");
+        assert(threw.message.includes(missingFile), "error message should name the missing file (" + missingFile + ")");
+      });
+    }
+  );
 
   // ---- UI-layer static regression guards (v5.2.2 follow-up fixes) --------
   test("REGRESSION GUARD: no CSS color assignment uses the invalid let(--x) typo for var(--x)", () => {

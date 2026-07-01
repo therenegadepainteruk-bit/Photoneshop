@@ -183,7 +183,29 @@ function initModal() {
   }
 }
 
+// Shows a clear, plain-language failure screen if init-guard's assertReady() throws —
+// a plugin that just doesn't respond to any clicks with no explanation is far worse
+// than one that tells you plainly what went wrong.
+function renderFatalInitError(e) {
+  console.error("[Photoneshop init]", e);
+  document.body.innerHTML =
+    '<div style="padding:20px;font-family:sans-serif;color:#f0f0f0;background:#3a1414;' +
+    'height:100vh;box-sizing:border-box;overflow:auto;">' +
+    '<h2 style="margin-top:0;color:#ff6b6b;">Photoneshop failed to start</h2>' +
+    '<p style="line-height:1.5;">' +
+    (e && e.message ? String(e.message) : String(e)) +
+    "</p>" +
+    "</div>";
+}
+
 async function init() {
+  try {
+    window.PhotoneshopInit.assertReady();
+  } catch (e) {
+    renderFatalInitError(e);
+    return; // stop here — do not wire up UI against missing dependencies
+  }
+
   initTabs();
   initSliders();
   initChips();

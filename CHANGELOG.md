@@ -1,5 +1,51 @@
 # Changelog
 
+## v5.2.7 — Initialization safety net (why not ES modules)
+
+Addresses a real, well-founded concern: this codebase relies on ~20 classic `<script>`
+files sharing one global scope, where a changed load order or a script that fails to
+load can cause a confusing failure far from the actual cause. The natural instinct is
+"use ES module import/export instead" — investigated that first, and it's not viable
+here, for reasons worth recording:
+
+- Adobe's own UXP documentation is explicit that plugin-authored files don't support
+  standard ES `import`/`export`. UXP's own mechanism for including other files is its
+  `require()` (CommonJS-style), documented as "not as robust as some other include
+  systems."
+- A `require()`-based rewrite is still a real option in principle, but it means
+  restructuring how every one of ~20 interdependent files loads — and two of them,
+  `core/preview.js` and `engines/halftone.js`, genuinely depend on each other (a
+  circular dependency). CommonJS handles circular requires in a specific, narrow way
+  that would need verifying against a live Photoshop/UXP host — not available here.
+  Rewriting the entire loading mechanism of a working, tested plugin on an
+  unverifiable platform-compatibility bet isn't a reasonable trade.
+
+### Added
+
+- `core/init-guard.js` — new, isolated, additive file. Declares the load-bearing
+  cross-file dependency graph (mirroring `ARCHITECTURE.md`) and checks, once, after
+  every script has loaded, that everything expected actually exists. If anything is
+  missing, throws a structured `PhotoneshopInitError` naming exactly what's missing
+  and which file was supposed to provide it — instead of a cryptic native
+  `ReferenceError` (or worse, a silent no-op) deep inside some unrelated feature
+  much later.
+- `ui/panels.js`: `init()` now calls `assertReady()` first, before wiring up any UI.
+  If it throws, the whole panel is replaced with a plain-language "Photoneshop failed
+  to start" screen instead of silently not responding to clicks.
+- Along the way, hit the same `let`-vs-`window`-property subtlety already found
+  earlier in this project (`CMYK_ANGLES`): `EDIT_PANES` and `SLIDER_DEFAULTS` are
+  declared with `let`, so — like a real `<script>` tag — they never become `window`
+  properties, only shared-lexical-scope bindings. The dynamic `window[name]` check
+  structurally can't see them; `init-guard.js` checks those two via direct
+  bare-identifier reference instead.
+
+### Tests
+
+- `test-suite.js` now loads the complete real file set (matching `index.html`'s
+  actual order) into an isolated context and asserts `assertReady()` passes clean —
+  and separately verifies it correctly detects and names 5 different
+  deliberately-broken load scenarios. 42 tests total, all green.
+
 ## v5.2.6 — Dev tooling: package.json, npm scripts, ESLint + Prettier
 
 Tooling only — no change to plugin runtime behaviour (UXP itself never reads
