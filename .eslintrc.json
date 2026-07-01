@@ -18,6 +18,8 @@
     "modal": "readonly",
     "bp": "readonly",
     "bpCreateLayer": "readonly",
+    "suspendHistorySuspension": "readonly",
+    "resumeHistorySuspension": "readonly",
     "activeLayerId": "readonly",
     "setStatus": "readonly",
     "bind": "readonly",

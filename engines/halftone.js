@@ -503,6 +503,12 @@ async function applyHalftoneEngine() {
     setStatus("Computing halftone\u2026", "info");
     const myGen = bumpRenderGen();
     await waitForRenderLock(); // don't run concurrently with an in-flight live-preview write
+    // This tab's own dedicated Apply button is independent of the shared live-
+    // preview Apply/Cancel bar \u2014 if a preview session (and its coalesced
+    // History-panel suspension) is still open from dragging a slider, close it
+    // out first instead of leaving its scratch layers and open suspension
+    // behind while this action starts its own separate edit.
+    if (_previewActive || _sourceReady) await cancelPreview();
     const angle = parseInt(val("htAngle"), 10) || 45;
     let variation, layerId;
     await modal("Halftone", async function () {

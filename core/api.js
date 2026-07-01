@@ -50,6 +50,44 @@ async function modal(name, fn) {
 async function bp(cmds, opts) {
   return window.batchPlay(cmds, opts || {});
 }
+
+// Coalesces every document edit between suspendHistorySuspension() and
+// resumeHistorySuspension() — even across SEPARATE executeAsModal calls —
+// into exactly ONE named History-panel entry, instead of Photoshop's default
+// of one entry per executeAsModal call. This is Photoshop's own documented
+// mechanism (executionContext.hostControl.suspendHistory/.resumeHistory), not
+// something this plugin re-implements. Must be called from inside an
+// executeAsModal callback (needs its executionContext). Always returns either
+// a real suspensionID or null — callers must treat null as "unavailable,
+// fall back to the default one-state-per-call behaviour" and never let a
+// failure here block the actual edit.
+async function suspendHistorySuspension(executionContext, name) {
+  try {
+    const doc = window.app.activeDocument;
+    if (!doc || !executionContext || !executionContext.hostControl) return null;
+    return await executionContext.hostControl.suspendHistory({ documentID: doc.id, name: name });
+  } catch (e) {
+    return null;
+  }
+}
+
+// Resumes (commits) a suspension started by suspendHistorySuspension(),
+// optionally giving the finished History-panel entry a clean, final name
+// (e.g. "Apply Threshold") that overrides the placeholder name suspension
+// started with. Safe to call with a null suspensionID (no-op) — every
+// session-ending code path calls this unconditionally so a suspension can
+// never be left open.
+async function resumeHistorySuspension(suspensionID, finalName) {
+  if (!suspensionID) return;
+  try {
+    if (finalName) suspensionID.finalName = finalName;
+    await modal(finalName || "Photoneshop", async function (executionContext) {
+      await executionContext.hostControl.resumeHistory(suspensionID);
+    });
+  } catch (e) {
+    /* best-effort — a history-coalescing failure must never block the caller */
+  }
+}
 // Returns the currently active layer's ID — reliable, documented DOM property.
 // Used instead of parsing batchPlay's raw result descriptor, whose shape varies
 // by action type (mergeVisible+duplicate doesn't return layerID the same way a

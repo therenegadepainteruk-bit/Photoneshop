@@ -1,5 +1,91 @@
 # Changelog
 
+## v5.4.5 — Undo experience: one History entry per logical action, not one per tick
+
+Reviewed every editing operation for how it's recorded in Photoshop's native
+History panel. The four live-preview tabs (Design Studio, Halftone, White
+Ink, DT Studio) already wrapped every debounced preview tick in its own
+`executeAsModal` call (needed for the live-drag UX), but each of those calls
+is, by default, its OWN separate History-panel entry — so dragging a slider
+for a few seconds could leave dozens of transient "preview" entries in the
+History panel before the user even clicked Apply, exactly the "dozens of
+individual undo steps" problem this task described. Every other
+document-modifying action (Garment Optimiser, White Ink underbase, Screen
+Studio split/separate, DT Studio Apply, exports, Print Doctor's quick fixes,
+etc.) was already confirmed atomic — one `executeAsModal` call each — in the
+v5.4.1 Photoshop-operations audit, so this pass is specifically about the
+live-preview tick problem.
+
+### Added
+
+- `core/api.js` `suspendHistorySuspension(executionContext, name)` /
+  `resumeHistorySuspension(suspensionID, finalName)` — thin wrappers around
+  Photoshop's own documented mechanism for this
+  (`executionContext.hostControl.suspendHistory`/`.resumeHistory`), not
+  something this plugin re-implements. While suspended, every document edit
+  — even across separate `executeAsModal` calls — coalesces into one History
+  entry; `resumeHistory` commits it, and `finalName` renames it to something
+  human ("Apply Threshold") instead of the placeholder name suspension
+  started with. Both are defensive by design: `suspendHistorySuspension`
+  returns `null` (never throws) if `hostControl` is unavailable or the call
+  fails, and every caller treats a `null`/absent suspension as "fall back to
+  today's one-entry-per-call behaviour" — a coalescing failure can never
+  block the actual edit. `resumeHistorySuspension(null, ...)` is a true
+  no-op.
+- `core/preview.js` `historyActionName()` — a human, verb-first name for the
+  coalesced History entry, distinct from the existing `resultLayerName()`
+  (used for the committed layer's own name, which favours compact settings
+  descriptors like "45lpi 45°"). Maps each live-preview tab's current state
+  to a name in the style requested: Design Studio → "Apply Threshold" /
+  "Apply Tone Adjustment" / "Apply Vintage Effect" depending on which of its
+  three sub-effects changed (reuses the existing `effectGroupName()` logic
+  already used for layer grouping); Halftone → "Generate Halftone"; White Ink
+  → "Generate White Underbase"; DT Studio → "Ink Reduction" when the ink
+  slider is the only one active, else "DTG/DTF Optimisation" (+ "Halftone" if
+  the screen step is on).
+- `core/preview.js` `_historySuspension` — session state alongside the
+  existing `_sourceId`/`_previewId`/`_sourceReady`/`_previewActive`. Started
+  on a session's first preview tick (inside `refreshPreview()`'s existing
+  "ensure source layer exists" block — suspended _before_ creating the
+  source snapshot layer, so that creation is coalesced too), resumed on
+  every session-ending path: `applyResult()`'s commit branch (with
+  `finalName: historyActionName()` — this is what turns potentially dozens
+  of ticks into one clean "Apply Threshold" entry) and `removePreview()`
+  (Cancel, tab switch, Reset All, or a document change mid-session via
+  `core/events.js` — all funnel through the same function, so all are
+  covered by one change). If source-layer creation itself fails after
+  suspending, the suspension is resumed immediately in the `catch` before
+  re-throwing, so a failed session can never leave history suspended (the
+  normal end-of-session paths are gated on `_sourceReady`/`_previewActive`
+  becoming true, which a failed session never reaches).
+- `engines/halftone.js` `applyHalftoneEngine()` (the Halftone tab's own
+  dedicated "Apply halftone" button, independent of the shared preview
+  Apply/Cancel bar) now closes out an in-progress preview session first if
+  one is open — the same `if (_previewActive || _sourceReady) await
+cancelPreview();` guard `resetAll()` already uses — instead of leaving its
+  scratch layers (and, now, an open suspension) behind while it starts its
+  own separate edit.
+- `test/history-suspension.test.js` (15 tests) — the real
+  `suspendHistorySuspension`/`resumeHistorySuspension` against a controllable
+  `hostControl` mock (correct args passed, graceful `null` on failure/
+  unavailability, `resumeHistorySuspension(null, ...)` never calls
+  `executeAsModal`, `finalName` is set/omitted correctly, resume failures
+  never throw), and the real `historyActionName()` across all four
+  live-preview tabs and Design Studio's three sub-effect cases.
+
+Not verified against a live Photoshop/UXP host in this environment — same
+honest caveat as every other change in this session that depends on exact
+Photoshop host behaviour (Spectrum UI, native event listeners). This one
+specifically touches Photoshop's own undo/History subsystem, so it's the
+highest-risk change to verify live: drag a slider on each of the four tabs,
+click Apply, and confirm the History panel shows one clean entry named as
+above (not one per tick); also test Cancel, and ideally a failure case.
+Every code path was designed so a coalescing failure degrades to today's
+existing (verified, shipping) per-call behaviour rather than blocking or
+corrupting an edit — see the "Added" notes above for exactly which paths
+guarantee that. 64/64 tests pass (15 new). No image-processing algorithm,
+UI, or feature behaviour changed.
+
 ## v5.4.4 — Image-processing optimisation: composite reads instead of stamp layers
 
 Reviewed every `window.imaging.getPixels`/`putPixels` call site and every

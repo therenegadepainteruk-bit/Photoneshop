@@ -58,6 +58,8 @@ window.PhotoneshopInit = (function () {
       "setSlider",
       "luminance",
       "selectOne",
+      "suspendHistorySuspension",
+      "resumeHistorySuspension",
     ],
     "core/preview.js": [
       "schedulePreview",
@@ -66,6 +68,7 @@ window.PhotoneshopInit = (function () {
       "isRenderStale",
       "bumpRenderGen",
       "waitForRenderLock",
+      "historyActionName",
     ],
     "core/history.js": [
       "recordAction",

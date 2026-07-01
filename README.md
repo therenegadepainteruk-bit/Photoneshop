@@ -1,4 +1,4 @@
-# Photoneshop v5.4.4
+# Photoneshop v5.4.5
 
 Photoshop UXP plugin for DTF / DTG / screen-print garment workflows.
 
@@ -53,7 +53,7 @@ isolated from each other. Highlights:
 - Verified during migration that the suite still has teeth: reintroducing the v5.2
   dead-global bug fails the functional test and a regression guard immediately.
 
-49 tests across 12 files, all passing against real source. Exit code is non-zero on
+64 tests across 13 files, all passing against real source. Exit code is non-zero on
 any failure (CI-ready).
 
 ## Install
@@ -66,22 +66,48 @@ Folder-copy installs do not work; UXP requires sideloading via UDT.
 
 ## Status (honest)
 
-| Area                                                             | State                                                                                                                                                          |
-| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Apply halftone (core feature)                                    | **Working**, instrumented, regression-guarded                                                                                                                  |
-| Large-image path                                                 | Verified band-chunked path in `computeHalftoneBufferChunked`; single output allocation, practical ceiling ~100 MP                                              |
-| Tiled renderer (`engines/halftone-tiled.js`)                     | **Experimental, unwired.** Real tile math is unit-tested; `applyHalftoneTiled` throws (no real pixel I/O yet)                                                  |
-| `core/errors.js` safe wrappers (`safeGetPixels`/`safePutPixels`) | Mock placeholders, **not used by any active path** (halftone uses `window.imaging` directly)                                                                   |
-| Screen Studio tab (was "Separation")                             | **Working** — channel split + simultaneous per-channel halftone; advanced spread/vector crop marks planned                                                     |
-| DT Studio tab (was "DTG" + "DTF")                                | **Working** — combined DTG/DTF optimisation with an opt-in halftone-screen finishing step (real pixel renderer)                                                |
-| Garment Preview tab                                              | Stub                                                                                                                                                           |
-| UI                                                               | 14 tabs, native UXP Spectrum elements (`sp-*`) — **not yet verified in a live Photoshop panel**, see v5.4.0 note                                               |
-| Photoshop-op wrapping (`executeAsModal`)                         | Every document-modifying action audited; all wrap in one atomic modal scope, live-preview races guarded                                                        |
-| Photoshop-op batching (`batchPlay`)                              | Redundant sequential calls folded into single multi-descriptor calls where safe (see v5.4.2 note)                                                              |
-| Native event listeners (`core/events.js`)                        | Coverage/fix-availability/RGB-CMYK readouts sync on PS select/historyStateChanged/open/close — see v5.4.3 note, **not yet verified in a live Photoshop panel** |
-| Pixel sampling (Colours/Screen Studio colour detection)          | Reads the composite directly via the Imaging API — no throwaway full-resolution stamp layer (see v5.4.4 note)                                                  |
+| Area                                                             | State                                                                                                                                                                                          |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Apply halftone (core feature)                                    | **Working**, instrumented, regression-guarded                                                                                                                                                  |
+| Large-image path                                                 | Verified band-chunked path in `computeHalftoneBufferChunked`; single output allocation, practical ceiling ~100 MP                                                                              |
+| Tiled renderer (`engines/halftone-tiled.js`)                     | **Experimental, unwired.** Real tile math is unit-tested; `applyHalftoneTiled` throws (no real pixel I/O yet)                                                                                  |
+| `core/errors.js` safe wrappers (`safeGetPixels`/`safePutPixels`) | Mock placeholders, **not used by any active path** (halftone uses `window.imaging` directly)                                                                                                   |
+| Screen Studio tab (was "Separation")                             | **Working** — channel split + simultaneous per-channel halftone; advanced spread/vector crop marks planned                                                                                     |
+| DT Studio tab (was "DTG" + "DTF")                                | **Working** — combined DTG/DTF optimisation with an opt-in halftone-screen finishing step (real pixel renderer)                                                                                |
+| Garment Preview tab                                              | Stub                                                                                                                                                                                           |
+| UI                                                               | 14 tabs, native UXP Spectrum elements (`sp-*`) — **not yet verified in a live Photoshop panel**, see v5.4.0 note                                                                               |
+| Photoshop-op wrapping (`executeAsModal`)                         | Every document-modifying action audited; all wrap in one atomic modal scope, live-preview races guarded                                                                                        |
+| Photoshop-op batching (`batchPlay`)                              | Redundant sequential calls folded into single multi-descriptor calls where safe (see v5.4.2 note)                                                                                              |
+| Native event listeners (`core/events.js`)                        | Coverage/fix-availability/RGB-CMYK readouts sync on PS select/historyStateChanged/open/close — see v5.4.3 note, **not yet verified in a live Photoshop panel**                                 |
+| Pixel sampling (Colours/Screen Studio colour detection)          | Reads the composite directly via the Imaging API — no throwaway full-resolution stamp layer (see v5.4.4 note)                                                                                  |
+| Undo / History panel                                             | Live-preview sessions coalesce to one named entry ("Apply Threshold", "Generate Halftone", …) instead of one per drag tick — see v5.4.5 note, **highest-risk change to verify live, see note** |
 
 See `CHANGELOG.md` and `INTEGRATION-REPORT-v5.2.1.md` for detail.
+
+## v5.4.5 note
+
+Dragging a slider on any of the four live-preview tabs (Design Studio,
+Halftone, White Ink, DT Studio) used to leave one Photoshop History-panel
+entry per debounced preview tick — potentially dozens for one drag — because
+each tick is its own `executeAsModal` call, and Photoshop records one History
+entry per call by default. Now the whole session (every tick, plus the final
+Apply) is wrapped in Photoshop's own documented `hostControl.suspendHistory`/
+`.resumeHistory` mechanism, so it collapses to exactly ONE entry, named for
+what actually happened: "Apply Threshold", "Apply Tone Adjustment", "Apply
+Vintage Effect" (Design Studio, depending which of its three sub-effects
+changed), "Generate Halftone", "Generate White Underbase", or "Ink
+Reduction"/"DTG Optimisation"/"DTF Optimisation" (DT Studio). Cancelling
+resumes (closes) the suspension too, so it can never be left open. Every
+other action was already confirmed to produce one clean entry per click in
+the v5.4.1 audit — this pass specifically targeted the live-preview tick
+problem. **Honest caveat:** this is the highest-risk change in the project so
+far to verify without a live Photoshop host, since it touches Photoshop's own
+undo subsystem directly — every path was designed to fail safe (a
+coalescing failure falls back to today's shipping one-entry-per-tick
+behaviour rather than blocking or corrupting an edit), but please drag a
+slider on each tab, click Apply, and check the History panel before relying
+on this. See `CHANGELOG.md` for the full design and exactly which failure
+paths are covered.
 
 ## v5.4.4 note
 

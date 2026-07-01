@@ -34,6 +34,13 @@ let _previewId = null;
 let _previewTimer = null;
 let _previewDirty = false;
 let _busy = false;
+// History-panel coalescing (core/api.js suspendHistorySuspension/resumeHistorySuspension):
+// started on a session's first tick, resumed on every session-ending path
+// (applyResult()'s commit branch, removePreview()) so a whole slider-drag
+// session — however many debounced preview ticks it took — lands as ONE
+// History entry instead of one per tick. Null whenever no session is open,
+// or on hosts where suspension isn't available (graceful no-op fallback).
+let _historySuspension = null;
 // FIX 1.2: _writeInProgress moved to core/api.js for sharing with halftone.js
 let _renderGen = 0; // monotonically increasing — every render claims one
 let _targetDocId = null; // the document this preview session belongs to
@@ -93,23 +100,39 @@ async function refreshPreview() {
   let failed = false;
   try {
     // FIX 1.5: Merge ensureSource and buildPreview into a single modal call to prevent nesting
-    await modal("Photoneshop: preview (unified)", async function () {
+    await modal("Photoneshop: preview (unified)", async function (executionContext) {
       // Ensure source layer exists
       if (!_sourceReady || _sourceId == null) {
         if (!docStillValid()) throw new Error("Active document changed during preview");
         _tonalWarningShown = false;
         _targetDocId = window.app.activeDocument ? window.app.activeDocument.id : null;
-        _sourceId = await bpCreateLayer([{ _obj: "mergeVisible", duplicate: true }]);
-        if (_sourceId == null) throw new Error("Could not create source snapshot");
-        await bp([
-          {
-            _obj: "set",
-            _target: [{ _ref: "layer", _id: _sourceId }],
-            to: { _obj: "layer", name: "Photoneshop Source" },
-          },
-        ]);
-        await bp([{ _obj: "hide", null: [{ _ref: "layer", _id: _sourceId }] }]).catch(function () {});
-        _sourceReady = true;
+        // Start of a new live-preview session — suspend History-panel recording
+        // so this tick, every subsequent debounced tick, and the eventual Apply/
+        // Cancel all coalesce into ONE entry instead of one per tick. Best-effort:
+        // a null suspension just means this session falls back to today's
+        // per-call history behaviour, never blocks the preview itself.
+        _historySuspension = await suspendHistorySuspension(executionContext, "Photoneshop");
+        try {
+          _sourceId = await bpCreateLayer([{ _obj: "mergeVisible", duplicate: true }]);
+          if (_sourceId == null) throw new Error("Could not create source snapshot");
+          await bp([
+            {
+              _obj: "set",
+              _target: [{ _ref: "layer", _id: _sourceId }],
+              to: { _obj: "layer", name: "Photoneshop Source" },
+            },
+          ]);
+          await bp([{ _obj: "hide", null: [{ _ref: "layer", _id: _sourceId }] }]).catch(function () {});
+          _sourceReady = true;
+        } catch (sourceErr) {
+          // Source-layer creation failed AFTER suspending: _sourceReady/_previewActive
+          // never become true this session, so removePreview()/cancelPreview()'s own
+          // guard would otherwise skip them entirely and never resume — resume right
+          // here instead, so a failed session can never leave history suspended.
+          await resumeHistorySuspension(_historySuspension);
+          _historySuspension = null;
+          throw sourceErr;
+        }
       }
 
       // Build preview from source
@@ -217,6 +240,13 @@ async function removePreview() {
   } catch (e) {
     /* best-effort */
   }
+  // Closes out a still-open suspension (Cancel, tab switch, or a document
+  // change mid-session) — a no-op if none is open. Since the scratch layers
+  // were just deleted, this path usually nets to "no history state at all"
+  // rather than a spurious entry, but resuming unconditionally on every
+  // session-ending path is what guarantees a suspension can never be left open.
+  await resumeHistorySuspension(_historySuspension);
+  _historySuspension = null;
   _previewActive = false;
   _sourceReady = false;
   _previewId = null;
@@ -273,6 +303,36 @@ function resultLayerName() {
   }
 }
 
+// Human, verb-first name for the History-panel entry a live-preview session
+// coalesces down to (see _historySuspension above) — distinct from
+// resultLayerName() (used for the LAYER's own name, which favours compact
+// settings descriptors like "45lpi 45°"). The History panel reads best with
+// an action label like "Apply Threshold" or "Generate Halftone".
+function historyActionName() {
+  switch (_currentTab) {
+    case 3:
+      return "Generate Halftone";
+    case 6:
+      return "Generate White Underbase";
+    case 9: {
+      const isDtf = getDTMode() === "dtf";
+      const inkPct = isDtf ? num("dtfInk") : num("dtgInk");
+      const otherActive = isDtf
+        ? num("dtfCol") > 0 || num("dtfSharp") > 0
+        : num("dtgWhite") > 0 || num("dtgDetail") > 0;
+      const base = inkPct > 0 && !otherActive ? "Ink Reduction" : (isDtf ? "DTF" : "DTG") + " Optimisation";
+      return base + (chk("dtHalftone") ? " + Halftone" : "");
+    }
+    default: {
+      const g = effectGroupName();
+      if (g === "DesignStudioThreshold") return "Apply Threshold";
+      if (g === "DesignStudioTone") return "Apply Tone Adjustment";
+      if (g === "DesignStudioVintage") return "Apply Vintage Effect";
+      return "Design Studio Edit";
+    }
+  }
+}
+
 async function applyResult() {
   if (!guard()) return;
   try {
@@ -313,6 +373,12 @@ async function applyResult() {
         await bp(cleanupCmds, { continueOnError: true }).catch(function () {});
         await groupSelectedInto(groupName);
       });
+      // Closes out the suspension started on this session's first preview tick
+      // (core/preview.js's _historySuspension) — every tick since, plus the
+      // "commit" work just above, collapse into ONE History-panel entry named
+      // after the actual edit (e.g. "Apply Threshold") instead of one per tick.
+      await resumeHistorySuspension(_historySuspension, historyActionName());
+      _historySuspension = null;
       _previewActive = false;
       _sourceReady = false;
       _previewId = null;
