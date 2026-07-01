@@ -1,5 +1,72 @@
 # Changelog
 
+## v5.4.2 — Photoshop-communication optimisation: fewer batchPlay round trips
+
+Reviewed every `bp()`/`batchPlay` call site for sequences of separate,
+sequential calls that could become one multi-descriptor call — reduces
+Photoshop API round trips and redraws without changing output, undo
+behaviour, or compatibility. No processing/algorithm or UI code touched.
+
+### Approach
+
+`bp(cmds)` (`core/api.js`) now accepts an optional second `opts` argument
+passed straight through to `window.batchPlay` (default `{}`, identical to the
+previous hardcoded call). Two mechanical, provably-safe merge rules were
+applied, never mixed within one merged call:
+
+1. **Consecutive bare calls** (none had their own `.catch()`, so any one
+   failing already aborted every call after it): merged with batchPlay's
+   default options — identical abort-on-first-error behaviour, now in one
+   round trip.
+2. **Consecutive calls that already had independent `.catch(() => {})`**:
+   merged using batchPlay's own documented `{ continueOnError: true }` option
+   — each command can still fail without blocking the others, exactly as
+   before, but as one round trip instead of N.
+
+### Changed
+
+- `core/history.js` `stampLayer()` — merge+rename (2 bare calls → 1).
+- `core/history.js` `toggleSolo()` — was one `bp()` call **per layer in the
+  document** in a loop; now one call for the whole layer set
+  (`continueOnError: true`, same per-layer failure tolerance).
+- `core/preview.js` `refreshPreview()` — the live-preview layer's
+  show/select/move-to-front (3 calls → 1, `continueOnError: true`). This runs
+  on every debounced slider-drag tick, so it's the highest-frequency call site
+  in the plugin.
+- `core/preview.js` `applyResult()` (commit branch) — delete stale source
+  layer + select result (2 calls → 1, `continueOnError: true`).
+- `core/preview.js` `removePreview()` — delete preview layer + delete source
+  layer (2 calls → 1, `continueOnError: true`).
+- `engines/print.js` `applyGarment()` — underbase preserveTransparency/fill/
+  move (3 calls → 1, `continueOnError: true`).
+- `engines/print.js` `exportScreen()` — duplicate/make-layer/set-name/flatten
+  (4 bare calls → 1).
+- `engines/print.js` `exportSpots()` — duplicate+flatten (2 bare calls → 1);
+  save+close (2 calls → 1, `continueOnError: true`).
+- `engines/print.js` `applyDT()` — on the non-halftone path, the tone/colour
+  pipeline and the result-layer rename now share one call instead of two
+  (unchanged on the halftone path, where a `putPixels` stage sits between them).
+- `engines/separation.js` `chokeChannelLayer()` — select+choke (2 calls → 1,
+  `continueOnError: true`); called once per channel, so this halves the round
+  trips for any separation with a choke value set.
+
+### Deliberately left unmerged
+
+- `core/diagnostics.js` — exists specifically to time each `getPixels`/
+  `putPixels`/`batchPlay` stage independently; merging would defeat its
+  purpose.
+- Any adjacent calls whose error-tolerance didn't already match (e.g. a bare
+  call followed by a `.catch()`-guarded one) — merging those would change
+  which failures propagate, so they were left as separate round trips.
+- `groupSelectedInto()`'s make-layerSection→fallback chain — branching
+  fallback logic, not a flat sequence of independent commands.
+
+Verified via `npm run format:check`, `npm run lint`, and `npm test`
+(41/41 passing, unmodified) — since none of these transformations touch
+processing logic, the existing suite exercising `kMeansColors`, the halftone
+render, and the mocked-batchPlay init paths is sufficient to confirm nothing
+regressed.
+
 ## v5.4.1 — Photoshop-operations audit: atomic history steps, document-conflict guards
 
 Reviewed every function that modifies the document (every `bp()`/`bpCreateLayer()`

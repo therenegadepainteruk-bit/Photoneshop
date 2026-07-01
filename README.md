@@ -1,4 +1,4 @@
-# Photoneshop v5.4.1
+# Photoneshop v5.4.2
 
 Photoshop UXP plugin for DTF / DTG / screen-print garment workflows.
 
@@ -77,8 +77,33 @@ Folder-copy installs do not work; UXP requires sideloading via UDT.
 | Garment Preview tab                                              | Stub                                                                                                              |
 | UI                                                               | 14 tabs, native UXP Spectrum elements (`sp-*`) — **not yet verified in a live Photoshop panel**, see v5.4.0 note  |
 | Photoshop-op wrapping (`executeAsModal`)                         | Every document-modifying action audited; all wrap in one atomic modal scope, live-preview races guarded           |
+| Photoshop-op batching (`batchPlay`)                              | Redundant sequential calls folded into single multi-descriptor calls where safe (see v5.4.2 note)                 |
 
 See `CHANGELOG.md` and `INTEGRATION-REPORT-v5.2.1.md` for detail.
+
+## v5.4.2 note
+
+Reviewed every `batchPlay` call site for sequences of separate, back-to-back
+calls that could be folded into one multi-descriptor call — fewer Photoshop
+round trips, fewer redraws, same result. Two safe patterns, applied only where
+the merged commands' error-handling already matched exactly:
+
+- **Runs of bare calls** (none had their own `.catch()`, so any one failing
+  already aborted the rest): merged with batchPlay's default options — e.g.
+  `stampLayer()`'s merge+rename, `exportScreen()`'s duplicate/make-layer/
+  set-name/flatten, `exportSpots()`'s duplicate+flatten.
+- **Runs of calls that already had independent `.catch(() => {})`**: merged
+  using batchPlay's own documented `continueOnError: true` option, which gives
+  the exact same "any one can fail without blocking the rest" behaviour in one
+  round trip instead of N — e.g. the footer's Solo button (was one call per
+  layer in the document), the live-preview tick's show/select/move-to-front
+  (runs on every debounced slider drag), White Ink's underbase fill sequence,
+  Screen Studio's per-channel choke, and preview cleanup/commit.
+
+`core/diagnostics.js` was deliberately left untouched — it exists specifically
+to time each `getPixels`/`putPixels`/`batchPlay` stage independently, so
+merging its calls would defeat its purpose. No processing/algorithm or UI
+changes; all 41 tests pass unmodified.
 
 ## v5.4.1 note
 

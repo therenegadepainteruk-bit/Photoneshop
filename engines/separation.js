@@ -369,14 +369,20 @@ async function halftoneChannelLayer(layerId, col, lpi, angle, dpi) {
 // already used by White Ink choke and Remove White Halos elsewhere in this codebase.
 async function chokeChannelLayer(layerId, chokePx) {
   if (chokePx <= 0) return;
-  await bp([{ _obj: "select", _target: [{ _ref: "layer", _id: layerId }] }]).catch(function () {});
-  await bp([
-    {
-      _obj: "minimum",
-      radius: { _unit: "pixelsUnit", _value: chokePx },
-      preserveShape: { _enum: "preserveShape", _value: "roundness" },
-    },
-  ]).catch(function () {});
+  // select+minimum each had their own independent .catch(() => {}) — one
+  // continueOnError:true call keeps that tolerance (called once per channel,
+  // so this halves the round trips for every separation with a choke set).
+  await bp(
+    [
+      { _obj: "select", _target: [{ _ref: "layer", _id: layerId }] },
+      {
+        _obj: "minimum",
+        radius: { _unit: "pixelsUnit", _value: chokePx },
+        preserveShape: { _enum: "preserveShape", _value: "roundness" },
+      },
+    ],
+    { continueOnError: true }
+  ).catch(function () {});
 }
 
 // Draws simple crosshair registration marks near each corner directly via pixel

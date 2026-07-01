@@ -32,31 +32,33 @@ async function applyGarment() {
             name: "White Underbase",
           },
         ]);
-        await bp([
-          {
-            _obj: "set",
-            _target: [
-              { _ref: "property", _property: "preserveTransparency" },
-              { _ref: "layer", _enum: "ordinal", _value: "targetEnum" },
-            ],
-            to: true,
-          },
-        ]).catch(() => {});
-        await bp([
-          {
-            _obj: "fill",
-            using: { _enum: "fillContents", _value: "white" },
-            opacity: { _unit: "percentUnit", _value: 100 },
-            mode: { _enum: "blendMode", _value: "normal" },
-          },
-        ]).catch(() => {});
-        await bp([
-          {
-            _obj: "move",
-            _target: [{ _ref: "layer", _enum: "ordinal", _value: "targetEnum" }],
-            to: { _ref: "layer", _enum: "ordinal", _value: "previous" },
-          },
-        ]).catch(() => {});
+        // preserveTransparency/fill/move each had their own independent
+        // .catch(() => {}) — one continueOnError:true call keeps that (any one
+        // can fail without blocking the next) while cutting 3 round trips to 1.
+        await bp(
+          [
+            {
+              _obj: "set",
+              _target: [
+                { _ref: "property", _property: "preserveTransparency" },
+                { _ref: "layer", _enum: "ordinal", _value: "targetEnum" },
+              ],
+              to: true,
+            },
+            {
+              _obj: "fill",
+              using: { _enum: "fillContents", _value: "white" },
+              opacity: { _unit: "percentUnit", _value: 100 },
+              mode: { _enum: "blendMode", _value: "normal" },
+            },
+            {
+              _obj: "move",
+              _target: [{ _ref: "layer", _enum: "ordinal", _value: "targetEnum" }],
+              to: { _ref: "layer", _enum: "ordinal", _value: "previous" },
+            },
+          ],
+          { continueOnError: true }
+        ).catch(() => {});
       }
     });
     const msg = "Optimised for " + g + (P.under && chk("autoUnderbase") ? " + white underbase" : "");
@@ -239,25 +241,32 @@ async function exportSpots() {
     const base = (doc.name || "art").replace(/\.[^.]+$/, "").trim() || "untitled";
     setStatus("Exporting spot channels…", "info");
     await modal("Spot Export", async () => {
+      // duplicate+flatten were both bare calls (no independent catch) — one
+      // round trip, default options, is behaviourally identical.
       await bp([
         {
           _obj: "duplicate",
           _target: [{ _ref: "document", _enum: "ordinal", _value: "first" }],
           name: base + "_spots",
         },
+        { _obj: "flattenImage" },
       ]);
-      await bp([{ _obj: "flattenImage" }]);
       const token = await fs.createSessionToken(folder);
-      await bp([
-        {
-          _obj: "save",
-          as: { _obj: "PNGFormat", method: { _enum: "PNGMethod", _value: "quick" } },
-          in: { _path: token, _kind: "local" },
-          copy: true,
-          lowerCase: true,
-        },
-      ]).catch(() => {});
-      await bp([{ _obj: "close", saving: { _enum: "yesNo", _value: "no" } }]).catch(() => {});
+      // save+close each had their own independent .catch(() => {}) — one
+      // continueOnError:true call keeps that tolerance in a single round trip.
+      await bp(
+        [
+          {
+            _obj: "save",
+            as: { _obj: "PNGFormat", method: { _enum: "PNGMethod", _value: "quick" } },
+            in: { _path: token, _kind: "local" },
+            copy: true,
+            lowerCase: true,
+          },
+          { _obj: "close", saving: { _enum: "yesNo", _value: "no" } },
+        ],
+        { continueOnError: true }
+      ).catch(() => {});
     });
     setStatus("Spot artwork exported to chosen folder", "success");
   } catch (e) {
@@ -346,18 +355,23 @@ async function applyDT() {
     await modal(modeLabel + " Optimised", async () => {
       layerId = await bpCreateLayer([{ _obj: "mergeVisible", duplicate: true }]);
       if (layerId == null) throw new Error("Could not create " + modeLabel + " layer");
-      if (cmds.length) await bp(cmds);
-      // Real pixel-based halftone (engines/halftone.js) on the flattened, already
-      // colour/ink-optimised layer — reuses the Halftone tab's LPI/Angle/Dot
-      // Gain/Ink Colour controls, exactly like the Halftone tab's own Apply.
-      if (wantHalftone) await writeHalftoneFinal(layerId, myGen);
-      await bp([
-        {
-          _obj: "set",
-          _target: [{ _ref: "layer", _id: layerId }],
-          to: { _obj: "layer", name: modeLabel + " Optimised" },
-        },
-      ]);
+      const nameCmd = {
+        _obj: "set",
+        _target: [{ _ref: "layer", _id: layerId }],
+        to: { _obj: "layer", name: modeLabel + " Optimised" },
+      };
+      if (wantHalftone) {
+        if (cmds.length) await bp(cmds);
+        // Real pixel-based halftone (engines/halftone.js) on the flattened, already
+        // colour/ink-optimised layer — reuses the Halftone tab's LPI/Angle/Dot
+        // Gain/Ink Colour controls, exactly like the Halftone tab's own Apply.
+        await writeHalftoneFinal(layerId, myGen);
+        await bp([nameCmd]);
+      } else {
+        // No putPixels stage in between here, so the tone/colour pipeline and the
+        // rename can share one batchPlay round trip instead of two.
+        await bp(cmds.length ? cmds.concat([nameCmd]) : [nameCmd]);
+      }
       await bp([{ _obj: "select", _target: [{ _ref: "layer", _id: layerId }] }]).catch(() => {});
       await groupSelectedInto(groupName);
     });
@@ -395,22 +409,23 @@ async function exportScreen() {
     const base = (window.app.activeDocument.name || "art").replace(/\.[^.]+$/, "").trim() || "untitled";
     setStatus("Exporting screens…", "info");
     await modal("Screen Export", async () => {
+      // duplicate/make-layer/set-name/flatten were 4 separate bare calls (none
+      // caught their own errors, so any failure aborted the rest either way) —
+      // one call, default (abort-on-error) options, is behaviourally identical.
       await bp([
         {
           _obj: "duplicate",
           _target: [{ _ref: "document", _enum: "ordinal", _value: "first" }],
           name: base + "_screen",
         },
-      ]);
-      await bp([{ _obj: "make", _target: [{ _ref: "layer" }] }]);
-      await bp([
+        { _obj: "make", _target: [{ _ref: "layer" }] },
         {
           _obj: "set",
           _target: [{ _ref: "layer", _enum: "ordinal", _value: "targetEnum" }],
           to: { _obj: "layer", name: "Registration" },
         },
+        { _obj: "flattenImage" },
       ]);
-      await bp([{ _obj: "flattenImage" }]);
       await bp([{ _obj: "convertMode", to: { _enum: "colorSpace", _value: "grayscaleMode" } }]).catch(() => {});
       await saveAsPNG(folder);
       await bp([{ _obj: "close", saving: { _enum: "yesNo", _value: "no" } }]).catch(() => {});

@@ -41,8 +41,14 @@ function getDoc() {
 async function modal(name, fn) {
   return window.core.executeAsModal(fn, { commandName: name });
 }
-async function bp(cmds) {
-  return window.batchPlay(cmds, {});
+// opts is passed straight through to batchPlay (default: {}, identical to the
+// old hardcoded call). The one option this codebase deliberately uses is
+// { continueOnError: true } — batchPlay's own documented per-command error
+// tolerance — to fold several PHOTOSHOP commands that already each had their
+// own independent `.catch(() => {})` into a single round trip without
+// changing which of them can fail silently.
+async function bp(cmds, opts) {
+  return window.batchPlay(cmds, opts || {});
 }
 // Returns the currently active layer's ID — reliable, documented DOM property.
 // Used instead of parsing batchPlay's raw result descriptor, whose shape varies

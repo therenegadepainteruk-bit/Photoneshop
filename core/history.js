@@ -77,8 +77,11 @@ async function stampLayer(name) {
   if (_layerTarget === "active") {
     await bp([{ _obj: "duplicate", _target: [{ _ref: "layer", _enum: "ordinal", _value: "targetEnum" }], name: name }]);
   } else {
-    await bp([{ _obj: "mergeVisible", duplicate: true }]);
+    // Both steps target "targetEnum" (the layer just made active by mergeVisible)
+    // and neither previously caught its own errors, so one batchPlay round trip
+    // is behaviourally identical to the previous two.
     await bp([
+      { _obj: "mergeVisible", duplicate: true },
       {
         _obj: "set",
         _target: [{ _ref: "layer", _enum: "ordinal", _value: "targetEnum" }],
@@ -151,15 +154,23 @@ async function toggleSolo() {
           break;
         }
       }
+      // Each layer's show/hide was previously its own batchPlay round trip with
+      // its own independent .catch(() => {}) — one command failing never
+      // affected the rest. continueOnError:true gives the exact same per-command
+      // tolerance in a single call, turning N redraws into 1.
       if (!target || _soloGroup === target) {
+        const cmds = [];
         for (let j = 0; j < layers.length; j++)
-          await bp([{ _obj: "show", null: [{ _ref: "layer", _name: layers[j].name }] }]).catch(function () {});
+          cmds.push({ _obj: "show", null: [{ _ref: "layer", _name: layers[j].name }] });
+        if (cmds.length) await bp(cmds, { continueOnError: true }).catch(function () {});
         _soloGroup = null;
       } else {
+        const cmds = [];
         for (let k = 0; k < layers.length; k++) {
           let cmd = layers[k].name === target ? "show" : "hide";
-          await bp([{ _obj: cmd, null: [{ _ref: "layer", _name: layers[k].name }] }]).catch(function () {});
+          cmds.push({ _obj: cmd, null: [{ _ref: "layer", _name: layers[k].name }] });
         }
+        if (cmds.length) await bp(cmds, { continueOnError: true }).catch(function () {});
         _soloGroup = target;
       }
     });

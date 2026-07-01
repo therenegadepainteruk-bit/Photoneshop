@@ -126,17 +126,21 @@ async function refreshPreview() {
       ]);
       if (_previewId == null) throw new Error("Could not create preview layer");
       if (isRenderStale(myGen)) return; // superseded mid-duplicate
-      await bp([{ _obj: "show", null: [{ _ref: "layer", _id: _previewId }] }]).catch(function () {});
-      await bp([{ _obj: "select", _target: [{ _ref: "layer", _id: _previewId }], makeVisible: true }]).catch(
-        function () {}
-      );
-      await bp([
-        {
-          _obj: "move",
-          _target: [{ _ref: "layer", _id: _previewId }],
-          to: { _ref: "layer", _enum: "ordinal", _value: "front" },
-        },
-      ]).catch(function () {});
+      // show/select/move each had their own independent .catch(() => {}) — this
+      // runs on every debounced preview tick, so folding them into one
+      // continueOnError:true call (same per-command tolerance) cuts 3 redraws to 1.
+      await bp(
+        [
+          { _obj: "show", null: [{ _ref: "layer", _id: _previewId }] },
+          { _obj: "select", _target: [{ _ref: "layer", _id: _previewId }], makeVisible: true },
+          {
+            _obj: "move",
+            _target: [{ _ref: "layer", _id: _previewId }],
+            to: { _ref: "layer", _enum: "ordinal", _value: "front" },
+          },
+        ],
+        { continueOnError: true }
+      ).catch(function () {});
       if (isRenderStale(myGen)) return; // superseded before the (potentially slow) write stage
 
       // Apply tab-specific processing
@@ -197,10 +201,12 @@ async function removePreview() {
   if (!_previewActive && !_sourceReady) return;
   try {
     await modal("Photoneshop: remove preview", async function () {
-      if (_previewId != null)
-        await bp([{ _obj: "delete", _target: [{ _ref: "layer", _id: _previewId }] }]).catch(function () {});
-      if (_sourceId != null)
-        await bp([{ _obj: "delete", _target: [{ _ref: "layer", _id: _sourceId }] }]).catch(function () {});
+      // Both deletes previously had independent .catch(() => {}) — merge with
+      // continueOnError:true so one failing still lets the other run, same as before.
+      const cmds = [];
+      if (_previewId != null) cmds.push({ _obj: "delete", _target: [{ _ref: "layer", _id: _previewId }] });
+      if (_sourceId != null) cmds.push({ _obj: "delete", _target: [{ _ref: "layer", _id: _sourceId }] });
+      if (cmds.length) await bp(cmds, { continueOnError: true }).catch(function () {});
     });
   } catch (e) {
     /* best-effort */
@@ -292,9 +298,13 @@ async function applyResult() {
         await bp([
           { _obj: "set", _target: [{ _ref: "layer", _id: _previewId }], to: { _obj: "layer", name: layerName } },
         ]);
-        if (_sourceId != null)
-          await bp([{ _obj: "delete", _target: [{ _ref: "layer", _id: _sourceId }] }]).catch(function () {});
-        await bp([{ _obj: "select", _target: [{ _ref: "layer", _id: _previewId }] }]).catch(function () {});
+        // Deleting the leftover source layer and selecting the result each had
+        // their own independent .catch(() => {}) — one continueOnError:true call
+        // preserves that (either can fail without blocking the other).
+        const cleanupCmds = [];
+        if (_sourceId != null) cleanupCmds.push({ _obj: "delete", _target: [{ _ref: "layer", _id: _sourceId }] });
+        cleanupCmds.push({ _obj: "select", _target: [{ _ref: "layer", _id: _previewId }] });
+        await bp(cleanupCmds, { continueOnError: true }).catch(function () {});
         await groupSelectedInto(groupName);
       });
       _previewActive = false;
