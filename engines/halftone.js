@@ -215,9 +215,16 @@ function computeHalftoneBuffer(
       const y0 = Math.max(0, oyi - reach),
         y1 = Math.min(h - 1, oyi + reach);
       for (let y = y0; y <= y1; y++) {
+        // y*sin/y*cos don't depend on x — hoisted out of the inner loop.
+        // Same two floating-point values either way (IEEE754 is
+        // deterministic for identical operands), just computed once per row
+        // instead of once per pixel — pure redundant-work removal, output
+        // is bit-for-bit identical to computing them inline every iteration.
+        const ySin = y * sin,
+          yCos = y * cos;
         for (let x = x0; x <= x1; x++) {
-          const rx = x * cos + y * sin,
-            ry = -x * sin + y * cos;
+          const rx = x * cos + ySin,
+            ry = -x * sin + yCos;
           const dx = rx - ccRX,
             dy = ry - ccRY;
           if (dx * dx + dy * dy <= dotR2) {

@@ -83,9 +83,13 @@ function computeHalftoneTile(srcBuf, srcWidth, srcHeight, srcDepth, tileX, tileY
       const y1d = Math.min(y1, y + reach);
 
       for (let yy = y0d; yy < y1d; yy++) {
+        // yy*sin/yy*cos don't depend on xx — hoisted out of the inner loop
+        // (same values either way; pure redundant-work removal).
+        const yySin = yy * sin,
+          yyCos = yy * cos;
         for (let xx = x0d; xx < x1d; xx++) {
-          const rxx = xx * cos + yy * sin;
-          const ryy = -xx * sin + yy * cos;
+          const rxx = xx * cos + yySin;
+          const ryy = -xx * sin + yyCos;
           const dx = rxx - ccRX,
             dy = ryy - ccRY;
 

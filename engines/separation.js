@@ -51,10 +51,14 @@ function kMeansColors(buf, comps, k, maxIter) {
   const sorted = pts.slice().sort(function (a, b) {
     return a[0] + a[1] + a[2] - (b[0] + b[1] + b[2]);
   });
+  // No .slice() here: centroids[c] is always fully REPLACED (never mutated
+  // in place) by the update step below, so seeding it with the same array
+  // reference sorted[idx] points to is safe — one less small-array copy per
+  // seed than defensively cloning something that's never written to.
   let centroids = [];
   for (let c = 0; c < k; c++) {
     const idx = Math.min(sorted.length - 1, Math.floor(((c + 0.5) / k) * sorted.length));
-    centroids.push(sorted[idx].slice());
+    centroids.push(sorted[idx]);
   }
   let assign = new Array(pts.length).fill(0);
   for (let iter = 0; iter < maxIter; iter++) {
@@ -93,6 +97,48 @@ function kMeansColors(buf, comps, k, maxIter) {
   return centroids.map(function (c) {
     return { r: Math.round(c[0]), g: Math.round(c[1]), b: Math.round(c[2]) };
   });
+}
+
+// Computes, once, each pixel's nearest centroid (by squared RGB distance;
+// -1 for transparent/near-transparent pixels, alpha < 10). Shared by
+// splitChannels() and autoSeparate()'s k-means branch, both of which build
+// one alpha mask per centroid from this same per-pixel nearest-centroid
+// assignment — previously each recomputed "which centroid is nearest" from
+// scratch inside its own per-centroid loop (an O(centroids² × pixels) scan,
+// since a pixel's nearest centroid doesn't depend on which centroid's mask
+// is currently being built). Doing it once here makes it O(centroids × pixels).
+function nearestCentroidIndices(buf, comps, w, h, centroids) {
+  const idx = new Int16Array(w * h).fill(-1);
+  for (let p = 0, px2 = 0; px2 < w * h; p += comps, px2++) {
+    const a = comps >= 4 ? buf[p + 3] : 255;
+    if (a < 10) continue;
+    let best = 0,
+      bestD = Infinity;
+    for (let cc = 0; cc < centroids.length; cc++) {
+      const dr = buf[p] - centroids[cc].r,
+        dg = (buf[p + 1] || 0) - centroids[cc].g,
+        db = (buf[p + 2] || 0) - centroids[cc].b;
+      const d = dr * dr + dg * dg + db * db;
+      if (d < bestD) {
+        bestD = d;
+        best = cc;
+      }
+    }
+    idx[px2] = best;
+  }
+  return idx;
+}
+
+// Builds centroid c's alpha mask from nearestCentroidIndices()'s result —
+// each pixel's real alpha where that pixel's nearest centroid is c, zero
+// (Uint8ClampedArray's own default) everywhere else.
+function centroidAlphaMask(buf, comps, w, h, nearestIdx, c) {
+  const alpha = new Uint8ClampedArray(w * h);
+  for (let p = 0, px2 = 0; px2 < w * h; p += comps, px2++) {
+    if (nearestIdx[px2] !== c) continue;
+    alpha[px2] = comps >= 4 ? buf[p + 3] : 255;
+  }
+  return alpha;
 }
 
 let _channelLayers = []; // [{id, name, color:{r,g,b}, alpha:Uint8ClampedArray, w, h, fullW, fullH}]
@@ -169,30 +215,11 @@ async function splitChannels() {
       const centroids = kMeansColors(buf, comps, n, 8);
       centroidCount = centroids.length;
       if (centroids.length === 0) return;
+      const nearestIdx = nearestCentroidIndices(buf, comps, w, h, centroids);
 
       for (let c = 0; c < centroids.length; c++) {
         const col = centroids[c];
-        const alpha = new Uint8ClampedArray(w * h);
-        for (let p = 0, px2 = 0; px2 < w * h; p += comps, px2++) {
-          const a = comps >= 4 ? buf[p + 3] : 255;
-          if (a < 10) {
-            alpha[px2] = 0;
-            continue;
-          }
-          let best = 0,
-            bestD = Infinity;
-          for (let cc = 0; cc < centroids.length; cc++) {
-            const dr = buf[p] - centroids[cc].r,
-              dg = (buf[p + 1] || 0) - centroids[cc].g,
-              db = (buf[p + 2] || 0) - centroids[cc].b;
-            const d = dr * dr + dg * dg + db * db;
-            if (d < bestD) {
-              bestD = d;
-              best = cc;
-            }
-          }
-          alpha[px2] = best === c ? a : 0;
-        }
+        const alpha = centroidAlphaMask(buf, comps, w, h, nearestIdx, c);
         const name = nearestColorName(col.r, col.g, col.b);
         const layerId = await bpCreateLayer([
           { _obj: "make", _target: [{ _ref: "layer" }], using: { _obj: "layer", name: name } },
@@ -509,32 +536,13 @@ async function autoSeparate() {
       } else {
         const centroids = kMeansColors(buf, comps, n, 8);
         if (centroids.length === 0) return;
+        const nearestIdx = nearestCentroidIndices(buf, comps, w, h, centroids);
         channels = centroids.map(function (col, c) {
           const ink =
             mode === "simprocess"
               ? nearestSimInk(col.r, col.g, col.b)
               : { name: nearestColorName(col.r, col.g, col.b), r: col.r, g: col.g, b: col.b };
-          const alpha = new Uint8ClampedArray(w * h);
-          for (let p = 0, px2 = 0; px2 < w * h; p += comps, px2++) {
-            const a = comps >= 4 ? buf[p + 3] : 255;
-            if (a < 10) {
-              alpha[px2] = 0;
-              continue;
-            }
-            let best = 0,
-              bestD = Infinity;
-            for (let cc = 0; cc < centroids.length; cc++) {
-              const dr = buf[p] - centroids[cc].r,
-                dg = (buf[p + 1] || 0) - centroids[cc].g,
-                db = (buf[p + 2] || 0) - centroids[cc].b;
-              const d = dr * dr + dg * dg + db * db;
-              if (d < bestD) {
-                bestD = d;
-                best = cc;
-              }
-            }
-            alpha[px2] = best === c ? a : 0;
-          }
+          const alpha = centroidAlphaMask(buf, comps, w, h, nearestIdx, c);
           return {
             name: ink.name,
             r: ink.r,

@@ -142,6 +142,9 @@ function benchmarkFn(fn, name) {
  * Get all recorded benchmarks as JSON.
  */
 function exportBenchmarks() {
+  // Filtered once and reused for both the sum and the count below, instead
+  // of filtering the same array twice to compute one average.
+  const withThroughput = benchmarks.filter((b) => b.throughput > 0);
   return {
     recordedAt: new Date().toISOString(),
     count: benchmarks.length,
@@ -150,8 +153,7 @@ function exportBenchmarks() {
       totalDurationMS: benchmarks.reduce((sum, b) => sum + b.duration, 0),
       totalPixelsProcessed: benchmarks.reduce((sum, b) => sum + b.pixelsProcessed, 0),
       avgThroughput: Math.round(
-        benchmarks.filter((b) => b.throughput > 0).reduce((sum, b) => sum + b.throughput, 0) /
-          Math.max(1, benchmarks.filter((b) => b.throughput > 0).length)
+        withThroughput.reduce((sum, b) => sum + b.throughput, 0) / Math.max(1, withThroughput.length)
       ),
       peakMemoryMB: Math.max(...benchmarks.map((b) => b.memoryPeakMB), 0),
       errorCount: benchmarks.filter((b) => b.error).length,

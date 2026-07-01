@@ -82,7 +82,9 @@ function initSliders() {
     "sepChoke",
   ];
   // Sliders across all live-preview tabs (2,3,6,9 — see EDIT_PANES in core/preview.js).
-  let LIVE_SLIDERS = [
+  // A Set so the "input" handler below (which can fire many times a second
+  // while dragging) checks membership in O(1) instead of scanning an array.
+  let LIVE_SLIDERS = new Set([
     "thresh",
     "exposure",
     "highlight",
@@ -108,7 +110,7 @@ function initSliders() {
     "dtfCol",
     "dtfInk",
     "dtfSharp",
-  ];
+  ]);
 
   ALL_SLIDERS.forEach(function (id) {
     let el = document.getElementById(id);
@@ -117,7 +119,7 @@ function initSliders() {
     if (out) out.textContent = el.value; // sync label to sp-slider's initial value
     el.addEventListener("input", function () {
       if (out) out.textContent = el.value;
-      if (LIVE_SLIDERS.indexOf(id) !== -1 && hasDoc() && EDIT_PANES[_currentTab]) {
+      if (LIVE_SLIDERS.has(id) && hasDoc() && EDIT_PANES[_currentTab]) {
         schedulePreview(); // defined in core/preview.js
       }
     });
@@ -318,7 +320,6 @@ async function init() {
   // Presets (tab 13) — all defined in presets/index.js
   bind("saveUserPreset", saveUserPreset);
   initBuiltinCategoryChips();
-  await loadPresets();
 
   // Footer tools
   bind("undoLast", undoLast); // core/history.js
@@ -326,6 +327,17 @@ async function init() {
   bind("soloGroup", toggleSolo); // core/history.js
 
   setStatus("Photoneshop ready", "success");
+
+  // loadPresets() reads presets.json from disk (core/storage.js's data
+  // folder) — nothing else in init() depends on it having finished, so it
+  // no longer blocks every button binding above and the "ready" status
+  // behind a file read. It renders the Presets tab's list itself once it
+  // resolves. Not awaited, so catch it explicitly here (same handling the
+  // outer run() IIFE below gives every other init() failure) rather than
+  // letting a render failure become an unhandled rejection instead.
+  loadPresets().catch(function (e) {
+    console.error("Photoneshop init error (loadPresets):", e);
+  });
 }
 
 // Use a Promise-based runner to handle async init cleanly

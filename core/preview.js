@@ -44,6 +44,21 @@ let _historySuspension = null;
 let _renderGen = 0; // monotonically increasing — every render claims one
 let _targetDocId = null; // the document this preview session belongs to
 const DEBOUNCE_MS = 130;
+let _coverageTimer = null;
+
+// Debounces the footer's ink-coverage readout the same way slider input
+// itself is debounced: a fast drag calls this once per tick, but each call
+// just resets the timer — the actual getPixels-based sample (a real
+// executeAsModal round trip) only runs once, ~DEBOUNCE_MS after the LAST
+// tick, instead of once per tick. Same eventual value once the drag
+// settles; far fewer Photoshop round trips while it's still moving.
+function scheduleCoverageUpdate() {
+  if (_coverageTimer) clearTimeout(_coverageTimer);
+  _coverageTimer = setTimeout(function () {
+    _coverageTimer = null;
+    updateCoverage(); // core/history.js
+  }, DEBOUNCE_MS);
+}
 
 // Every NEW desired operation (a fresh preview tick, or Apply, or Cancel)
 // bumps this and returns its own id. Any in-flight async work that captured
@@ -203,7 +218,7 @@ async function refreshPreview() {
       _previewDirty = false;
       setTimeout(refreshPreview, 0);
     } else {
-      updateCoverage();
+      scheduleCoverageUpdate();
     }
   }
 }

@@ -1,5 +1,108 @@
 # Changelog
 
+## v5.4.8 — Optimisation pass: fewer redundant PS calls, fewer redundant calculations, faster startup
+
+Profiled every hot path (live preview, startup, colour splitting, deep
+analysis) for redundant Photoshop API calls, repeated calculations,
+inefficient loops, and unnecessary allocations. Every change verified
+output-identical — several with new tests using hand-computed or
+independently-derived expected values, not just "whatever the code already
+produced." 98/98 tests pass (12 new). No feature behaviour changed.
+
+### Faster previews — fewer redundant Photoshop API calls
+
+- `core/preview.js` — the footer's live ink-coverage readout used to call
+  `updateCoverage()` (a real `getPixels`-based `executeAsModal` round trip)
+  after **every** successful live-preview tick — during a normal-speed
+  slider drag, that's roughly one extra Photoshop round trip every 130ms,
+  purely to refresh a small text label the user isn't focused on mid-drag.
+  Added `scheduleCoverageUpdate()`, debounced the same way slider input
+  itself already is: each tick just resets a timer, and the real sample
+  only fires once, ~130ms after the _last_ tick — one Photoshop round trip
+  per completed drag gesture instead of one per tick. Same eventual value
+  once the drag settles. `core/events.js`'s direct `updateCoverage()` call
+  (on native document/history/selection changes — already low-frequency) is
+  unchanged. New: `test/preview-coverage-debounce.test.js`.
+
+### Faster halftone/colour-splitting — repeated calculations and an O(n²) loop
+
+- `engines/halftone.js` `computeHalftoneBuffer()` and
+  `engines/halftone-tiled.js`'s tile-drawing loop — the inner per-pixel dot
+  loop recomputed `y*sin`/`y*cos` (or `yy*sin`/`yy*cos`) on every iteration
+  despite both being constant for the whole row (only `x` varies in the
+  inner loop). Hoisted out to once per row. Verified output-identical by the
+  existing `test/halftone-tiled.test.js`/`test/halftone-integration.test.js`
+  (their pixel-output assertions still pass unmodified).
+- `engines/separation.js` `splitChannels()`/`autoSeparate()` — both used to
+  recompute "which centroid is nearest" **from scratch for every pixel,
+  once per channel** (an O(centroids² × pixels) scan), even though a
+  pixel's nearest centroid doesn't depend on which channel's alpha mask is
+  currently being built. Extracted `nearestCentroidIndices()` (computes it
+  once, O(centroids × pixels)) and `centroidAlphaMask()` (builds one
+  channel's mask from that shared result) — used by both functions, which
+  also removes the duplication between them. For a typical 4-colour split
+  this is a 4× reduction in distance calculations; for the maximum 14
+  colours, 14×. New: `test/separation-centroid-mask.test.js` (hand-computed
+  expected nearest-centroid assignments and alpha masks, including an exact
+  tie-break case) and `test/kmeans-regression.test.js` (locks in
+  `kMeansColors()`'s exact output as a baseline, since it sits right next to
+  this change).
+- `engines/separation.js` `kMeansColors()` — centroid seeding copied each
+  seed point (`sorted[idx].slice()`) defensively, but nothing ever mutates
+  a centroid in place (the update step always fully replaces
+  `centroids[c]` with a new array) — removed the unnecessary copy.
+
+### Faster Deep Analysis — another repeated calculation
+
+- `ai/analysis.js` — `runDeepAnalysis()`'s edge-density scan computed each
+  interior pixel's luminance up to **three times** (once as its own value,
+  once as its left neighbour's "right" sample, once as its top neighbour's
+  "down" sample). Extracted `computeEdgeDensity()`, which precomputes every
+  pixel's luminance once into a `Float64Array` (double precision — a
+  `Float32Array` would silently round every value and change the result;
+  caught by a test before fixing it) and reuses it for both neighbour
+  comparisons. New: `test/analysis-edge-density.test.js`, including an
+  exact-equality check against an independent, unoptimised reference
+  implementation.
+
+### Faster startup
+
+- `ui/panels.js` `init()` — `await loadPresets()` (a `presets.json` file
+  read) sat in the middle of startup, blocking every button binding after
+  it — including the footer's Undo/Diagnostics/Solo buttons and the
+  "Photoneshop ready" status — behind a file read that nothing else in
+  `init()` actually depends on. Reordered so every button gets bound and
+  "ready" shows immediately; `loadPresets()` now runs in the background and
+  populates the Presets tab whenever it resolves (still handles its own
+  errors the same way — explicit `.catch()` added since it's no longer
+  awaited, so a failure surfaces the same as every other `init()` failure
+  instead of becoming a silent unhandled rejection).
+
+### Smaller
+
+- `ui/panels.js` `initSliders()` — `LIVE_SLIDERS` (checked on every slider
+  `input` event, which can fire many times a second while dragging) is now
+  a `Set` (O(1) `.has()`) instead of an array (`O(n)` `.indexOf()`).
+- `core/benchmark.js` `exportBenchmarks()` — filtered the same array twice
+  (once for a sum, once for a count) to compute one average; filtered once
+  and reused.
+
+### Reviewed and left unchanged
+
+- `core/memory.js`'s buffer pooling / most of `core/benchmark.js` — real,
+  tested, but not wired into any active path (per the v5.4.7 refactor's
+  findings) — no "startup"/"preview"/"export" path calls them, so
+  optimising them wouldn't move any of this task's four named metrics.
+- `engines/print.js`'s export functions and `engines/vintage.js`/
+  `engines/print.js`'s tone/colour pipelines — already reviewed for
+  redundant batchPlay calls in the v5.4.2 pass; Photoshop's own native
+  filters (brightness, blur, threshold, etc.) remain the fastest, most
+  correct path — not something to reimplement via raw pixel math for a
+  marginal, unverifiable gain.
+- Every image-processing algorithm's actual output — unchanged; this pass
+  is entirely about _how many times_ and _how_ existing, correct
+  computations run, not what they compute.
+
 ## v5.4.7 — Full refactor: dead code, duplication, naming, comments, documentation
 
 A maintainability pass across the whole codebase — no processing algorithm,

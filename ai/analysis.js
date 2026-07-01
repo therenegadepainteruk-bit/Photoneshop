@@ -342,6 +342,40 @@ function closeDeepModal() {
   if (m) m.classList.add("hide");
 }
 
+// Cheap Sobel-proxy edge density — forward-difference gradient against each
+// pixel's right and down neighbour. Precomputes every pixel's luminance
+// ONCE (a Float64Array of w×h values — double precision, matching JS's
+// native number type exactly; a Float32Array would silently round every
+// value and change the result) rather than recomputing it inline as this
+// loop's own g0/gR/gD — every interior pixel's luminance used to be
+// computed up to three times over the course of the scan (once as its own
+// g0, once as its left neighbour's gR, once as its top neighbour's gD).
+// luminance() is a pure function of the same r,g,b inputs every time, so
+// this changes nothing about the values, only how many times each is
+// computed — output is bit-identical to the original inline version.
+function computeEdgeDensity(buf, comps, w, h) {
+  const luma = new Float64Array(w * h);
+  for (let y = 0, pi = 0; y < h; y++) {
+    for (let x = 0; x < w; x++, pi++) {
+      const idx = pi * comps;
+      luma[pi] = luminance(buf[idx], buf[idx + 1], buf[idx + 2]);
+    }
+  }
+  let edgeSum = 0,
+    edgeSamples = 0;
+  for (let y = 0; y < h - 1; y++) {
+    for (let x = 0; x < w - 1; x++) {
+      const pi = y * w + x;
+      const g0 = luma[pi],
+        gR = luma[pi + 1], // right neighbour
+        gD = luma[pi + w]; // down neighbour
+      edgeSum += Math.abs(g0 - gR) + Math.abs(g0 - gD);
+      edgeSamples++;
+    }
+  }
+  return edgeSamples ? edgeSum / edgeSamples / 255 : 0; // 0..~1
+}
+
 async function runDeepAnalysis() {
   if (!guard()) return;
   openDeepModal();
@@ -415,22 +449,7 @@ async function runDeepAnalysis() {
     setBar(70);
 
     // ---- edge density (forward-difference gradient, cheap Sobel proxy) ----
-    let edgeSum = 0,
-      edgeSamples = 0;
-    let step = comps;
-    for (let y = 0; y < h - 1; y++) {
-      for (let x = 0; x < w - 1; x++) {
-        let idx = (y * w + x) * step;
-        let idxR = idx + step; // right neighbour
-        let idxD = idx + w * step; // down neighbour
-        let g0 = luminance(buf[idx], buf[idx + 1], buf[idx + 2]);
-        let gR = luminance(buf[idxR], buf[idxR + 1], buf[idxR + 2]);
-        let gD = luminance(buf[idxD], buf[idxD + 1], buf[idxD + 2]);
-        edgeSum += Math.abs(g0 - gR) + Math.abs(g0 - gD);
-        edgeSamples++;
-      }
-    }
-    let edgeDensity = edgeSamples ? edgeSum / edgeSamples / 255 : 0; // 0..~1
+    let edgeDensity = computeEdgeDensity(buf, comps, w, h);
     setBar(90);
 
     let colorCount = Object.keys(colorSet).length;
