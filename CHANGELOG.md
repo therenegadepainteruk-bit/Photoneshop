@@ -6,10 +6,11 @@ Tooling only — no change to plugin runtime behaviour (UXP itself never reads
 `package.json`; it's Node-side infrastructure for testing and development).
 
 ### Added
+
 - `package.json` — proper project metadata, `private: true` + `UNLICENSED` (this is
   commercial code, not an open-source package), pinned Node engine (`>=18`).
 - npm scripts: `npm test` (runs `test-suite.js`), `npm run lint` (ESLint), `npm run
-  format` / `npm run format:check` (Prettier).
+format` / `npm run format:check` (Prettier).
 - `package-lock.json` committed for reproducible installs across machines.
 - `eslint@8` + `.eslintrc.json` — the exact config already validated in this
   project's audit (every cross-file global this codebase's shared-script-scope
@@ -33,6 +34,7 @@ verified building blocks (k-means colour detection, the halftone render engine, 
 against, any third-party action set or commercial tool.
 
 ### Added
+
 - **CMYK mode** — true 4-colour process separation via the standard RGB→CMYK
   subtractive-colour formula, each channel auto-halftoned at the classic C15°/M75°/Y0°/K45°
   prepress angle convention (industry-standard spacing chosen to avoid moiré, used
@@ -51,6 +53,7 @@ against, any third-party action set or commercial tool.
   palette" / "Ink-saving knockout" quick tools are unchanged and still available.
 
 ### Fixed
+
 - **Colour-split layers didn't cover the canvas on documents larger than 1200px.**
   `splitChannels()` (Colours tab) detects colour at a downscaled resolution for k-means
   performance — correct — but was then writing the output layer at that same
@@ -61,6 +64,7 @@ against, any third-party action set or commercial tool.
   and the new Auto Separate engine, which shares this code path.
 
 ### Tests
+
 - `test-suite.js` now also loads `engines/separation.js`. Added real functional tests for
   `rgbToCmyk()` (black/white/red sanity checks) and `nearestSimInk()`, plus regression
   guards for the classic angle values and the canvas-coverage upscale fix. 36 tests total,
@@ -75,6 +79,7 @@ colour control anywhere in the Halftone tab's UI — every halftone was black, w
 to change it.
 
 ### Added
+
 - Ink colour picker on the Halftone tab (`#htColor`, reusing the existing channel-row
   style from the Colours tab), defaulting to black.
 - Colour picker changes now trigger the live preview, same as every slider.
@@ -84,6 +89,7 @@ to change it.
   black on anything malformed).
 
 ### Notes
+
 - Colour only controls the halftone dot fill. It does not sample or preserve the colour
   of the layer the effect is applied to — pick the colour you want per use, same
   workflow as choosing an ink colour before running a real halftone screen.
@@ -95,6 +101,7 @@ behaviour changed; all fixes are in the UI/manifest layer that the existing test
 suite doesn't cover (it only loads `core/*.js` and `engines/halftone*.js`).
 
 ### Fixed
+
 - **Score/warning colour coding was silently broken everywhere it appeared.**
   `ai/analysis.js` set `element.style.color` using the invalid CSS typo
   `"let(--fg)"` / `"let(--warn)"` / `"let(--err)"` instead of `"var(--x)"`. `let`
@@ -124,6 +131,7 @@ suite doesn't cover (it only loads `core/*.js` and `engines/halftone*.js`).
   `hasDoc()` guard used everywhere else in the codebase.
 
 ### Tests
+
 - Two new static regression guards in `test-suite.js`, matching the existing
   "REGRESSION GUARD" convention: one asserts no shipped file contains the
   `let(--x)` CSS typo, one asserts no shipped file contains `window.window.`.
@@ -145,12 +153,14 @@ not match the source. v5.2.2 is rebuilt from the corrected tree and the package 
 are verified directly from the extracted zip.
 
 ### Fixed
+
 - `core/api.js` `guard()`, `core/validation.js` `validateRGBMode`, and `core/errors.js`
   `validateDocument` now read `doc.mode` (with `doc.colorModel` as a defensive fallback),
   normalise to a string, and only treat a document as non-RGB when the mode is **readable
   and clearly not RGB**. An unreadable mode never produces a false RGB failure/block.
 
 ### Tests
+
 - Added real tests that feed the actual UXP shape: `validateRGBMode({mode:'RGBColorMode'})`
   must pass, `{mode:'CMYKColorMode'}` must fail, `{}` must not false-fail.
 - Added `guard()` tests that load the **real** `core/api.js` in an isolated vm (photoshop/uxp
@@ -166,6 +176,7 @@ are verified directly from the extracted zip.
 release makes it actually work and adds a test suite that proves it.
 
 ### Fixed
+
 - **Apply halftone threw on every invocation.** The integration entry point
   (`applyHalftoneWithArch`) dereferenced `window.PhotoneshopHalftone.applyHalftone`,
   a global that is assigned nowhere in the package, throwing
@@ -185,6 +196,7 @@ release makes it actually work and adds a test suite that proves it.
   "experimental / not implemented" error instead of returning a fake success object.
 
 ### Changed
+
 - `test-suite.js` **completely rewritten.** It now loads the real `core/*.js` and
   `engines/*.js` via a Node `vm` context and exercises the real exported functions,
   including a functional end-to-end halftone test (mocked imaging, asserts real read +
@@ -195,9 +207,11 @@ release makes it actually work and adds a test suite that proves it.
   wrappers disclosed as unused mocks.
 
 ### Removed
+
 - `engines/halftone.js.bak` (stray backup that should not have shipped).
 
 ### Known limitations (unchanged, disclosed)
+
 - Large-image halftone uses the band-chunked path with one full-size output buffer
   (practical ceiling ~100 MP). The tiled renderer that would remove this ceiling is
   not yet functional.
@@ -206,14 +220,17 @@ release makes it actually work and adds a test suite that proves it.
 ---
 
 ## v5.2.0 — Integration attempt (BROKEN — superseded by 5.2.1)
+
 - Added integration layer + architectural modules, but the halftone button path
   referenced an unassigned global and failed on every click. Test suite was inline
   mocks that passed regardless of the real code. Do not use.
 
 ## v5.1.0 — Architectural modules built (not yet wired)
+
 - `core/memory.js`, `core/errors.js`, `core/validation.js`, `core/benchmark.js`,
   `engines/halftone-tiled.js` added as standalone modules.
 
 ## v5.0.0 — Base platform
+
 - 15-tab garment-print platform, 25 printer presets, non-destructive layer ops,
   live halftone preview, functional halftone via `writeHalftoneFinal`.

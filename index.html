@@ -1,518 +1,1539 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-<meta charset="utf-8">
-<title>Photoneshop</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box;-webkit-user-select:none;user-select:none;}
-:root{
-  --fg:#f0f0f0;--fg2:#8a8a8e;--fg3:#52525a;--fg4:#3a3a3e;
-  --bg:#0c0c0d;--bg2:#141416;--bg3:#1c1c1f;--bg4:#252528;
-  --line:#2a2a2d;--ok:#3ecf6a;--warn:#ffb020;--err:#ff5c5c;
-  --f:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;
-}
-html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(--fg);font-family:var(--f);font-size:13px;-webkit-font-smoothing:antialiased;}
-.app{display:flex;flex-direction:column;height:100%;min-height:0;}
-.hd{padding:14px 16px 10px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;}
-.hd h1{font-size:15px;font-weight:650;letter-spacing:.3px;}
-.hd p{font-size:9.5px;font-weight:500;color:var(--fg3);margin-top:2px;letter-spacing:1.4px;text-transform:uppercase;}
+  <head>
+    <meta charset="utf-8" />
+    <title>Photoneshop</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      :root {
+        --fg: #f0f0f0;
+        --fg2: #8a8a8e;
+        --fg3: #52525a;
+        --fg4: #3a3a3e;
+        --bg: #0c0c0d;
+        --bg2: #141416;
+        --bg3: #1c1c1f;
+        --bg4: #252528;
+        --line: #2a2a2d;
+        --ok: #3ecf6a;
+        --warn: #ffb020;
+        --err: #ff5c5c;
+        --f: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+      }
+      html,
+      body {
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: var(--f);
+        font-size: 13px;
+        -webkit-font-smoothing: antialiased;
+      }
+      .app {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        min-height: 0;
+      }
+      .hd {
+        padding: 14px 16px 10px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .hd h1 {
+        font-size: 15px;
+        font-weight: 650;
+        letter-spacing: 0.3px;
+      }
+      .hd p {
+        font-size: 9.5px;
+        font-weight: 500;
+        color: var(--fg3);
+        margin-top: 2px;
+        letter-spacing: 1.4px;
+        text-transform: uppercase;
+      }
 
-/* SLIDING TOGGLE SWITCH — shared by Basic/Advanced and RGB/CMYK */
-.toggle-switch{position:relative;display:flex;background:var(--bg3);border-radius:7px;border:1px solid var(--line);overflow:hidden;width:140px;flex-shrink:0;}
-.toggle-switch button{position:relative;z-index:2;flex:1;padding:7px 0;border:none;background:none;color:var(--fg3);font:inherit;font-size:11px;font-weight:620;cursor:pointer;transition:color .2s;}
-.toggle-switch button.on{color:var(--bg);}
-.toggle-thumb{position:absolute;top:2px;left:2px;width:calc(50% - 2px);height:calc(100% - 4px);background:var(--fg);border-radius:5px;transition:transform .22s cubic-bezier(.4,0,.2,1);z-index:1;}
-.toggle-switch.right .toggle-thumb{transform:translateX(100%);}
+      /* SLIDING TOGGLE SWITCH — shared by Basic/Advanced and RGB/CMYK */
+      .toggle-switch {
+        position: relative;
+        display: flex;
+        background: var(--bg3);
+        border-radius: 7px;
+        border: 1px solid var(--line);
+        overflow: hidden;
+        width: 140px;
+        flex-shrink: 0;
+      }
+      .toggle-switch button {
+        position: relative;
+        z-index: 2;
+        flex: 1;
+        padding: 7px 0;
+        border: none;
+        background: none;
+        color: var(--fg3);
+        font: inherit;
+        font-size: 11px;
+        font-weight: 620;
+        cursor: pointer;
+        transition: color 0.2s;
+      }
+      .toggle-switch button.on {
+        color: var(--bg);
+      }
+      .toggle-thumb {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: calc(50% - 2px);
+        height: calc(100% - 4px);
+        background: var(--fg);
+        border-radius: 5px;
+        transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 1;
+      }
+      .toggle-switch.right .toggle-thumb {
+        transform: translateX(100%);
+      }
 
-.target-strip{display:flex;gap:5px;padding:6px 0 8px;flex-shrink:0;align-items:center;}
-.target-label{font-size:10px;font-weight:580;color:var(--fg3);letter-spacing:.8px;text-transform:uppercase;margin-right:4px;white-space:nowrap;}
-.target-btn{padding:5px 11px;border:1px solid var(--line);border-radius:6px;background:var(--bg3);color:var(--fg3);font:inherit;font-size:11px;font-weight:560;cursor:pointer;transition:.15s;}
-.target-btn:hover{color:var(--fg);background:var(--bg4);}
-.target-btn.on{background:var(--fg);border-color:var(--fg);color:var(--bg);}
-.nav{display:flex;flex-wrap:wrap;gap:4px;padding-bottom:10px;flex-shrink:0;}
-.nav button{flex:1 1 30%;min-width:90px;padding:9px 4px 7px;border:none;border-radius:6px;background:var(--bg3);color:var(--fg3);font:inherit;font-size:10px;font-weight:580;cursor:pointer;transition:.15s;text-align:center;line-height:1.25;border:1px solid transparent;box-sizing:border-box;}
-.nav button:hover{background:var(--bg4);color:var(--fg2);}
-.nav button.on{background:var(--fg);color:var(--bg);border-color:var(--fg);}
-.nav button .tag{display:block;font-size:8px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;opacity:.55;margin-top:2px;}
-.body{flex:1;min-height:0;overflow-y:auto;padding:0 16px 14px;}
-.body::-webkit-scrollbar{width:6px;}
-.body::-webkit-scrollbar-track{background:transparent;}
-.body::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:4px;}
-.pane{display:none;flex-direction:column;gap:18px;}
-.pane.on{display:flex;}
-.sec{display:flex;flex-direction:column;gap:10px;}
-.grp{font-size:9.5px;font-weight:640;letter-spacing:1.5px;text-transform:uppercase;color:var(--fg3);}
-.hint{font-size:11px;line-height:1.55;color:var(--fg3);}
-.stub-note{padding:13px;background:var(--bg3);border:1px solid var(--line);border-radius:9px;font-size:11.5px;color:var(--fg3);line-height:1.6;}
-.stub-note strong{color:var(--fg2);display:block;margin-bottom:5px;font-size:12.5px;}
-.s{display:flex;flex-direction:column;gap:7px;}
-.s-row{display:flex;justify-content:space-between;align-items:baseline;}
-.s-row label{font-size:13px;font-weight:500;}
-.s-val{font-size:13px;font-weight:650;font-variant-numeric:tabular-nums;min-width:32px;text-align:right;}
-.s-track{position:relative;height:34px;display:flex;align-items:center;}
-input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:34px;background:transparent;cursor:pointer;margin:0;position:relative;z-index:2;}
-input[type=range]::-webkit-slider-runnable-track{height:34px;border-radius:8px;background:var(--bg3);border:1px solid var(--line);}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:7px;height:44px;margin-top:-6px;border-radius:4px;background:var(--fg);cursor:grab;box-shadow:0 0 0 1px rgba(0,0,0,.5),0 3px 10px rgba(0,0,0,.5);}
-input[type=range]::-webkit-slider-thumb:active{cursor:grabbing;}
-.s-fill{position:absolute;left:1px;top:1px;bottom:1px;border-radius:7px;background:var(--bg4);pointer-events:none;z-index:1;width:0;}
-select{width:100%;padding:11px 12px;background:var(--bg3);border:1px solid var(--line);border-radius:9px;color:var(--fg);font:inherit;font-size:13px;cursor:pointer;appearance:none;}
-select:focus{outline:none;border-color:var(--fg3);}
-.chips{display:flex;flex-wrap:wrap;gap:6px;}
-.chip{flex:1;min-width:46px;padding:10px 6px;background:var(--bg3);border:1px solid var(--line);border-radius:8px;color:var(--fg3);font:inherit;font-size:11.5px;font-weight:580;cursor:pointer;transition:.15s;text-align:center;}
-.chip:hover{background:var(--bg4);color:var(--fg2);}
-.chip.on{background:var(--fg);border-color:var(--fg);color:var(--bg);}
-.tog{display:flex;align-items:center;gap:10px;padding:11px 12px;background:var(--bg3);border:1px solid var(--line);border-radius:9px;cursor:pointer;}
-.tog input{width:16px;height:16px;accent-color:var(--fg);cursor:pointer;flex-shrink:0;}
-.tog span{font-size:13px;font-weight:500;}
-.actions{display:flex;flex-direction:column;gap:7px;}
-.btn{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:9px;background:var(--bg3);color:var(--fg);font:inherit;font-size:13px;font-weight:540;cursor:pointer;transition:.15s;text-align:left;}
-.btn:hover{background:var(--bg4);}
-.btn:active{transform:scale(.99);}
-.btn.primary{background:var(--fg);color:var(--bg);border-color:var(--fg);font-weight:650;}
-.btn.primary:hover{opacity:.9;}
-.btn:disabled{opacity:.35;cursor:not-allowed;}
-.btn:disabled:hover{background:var(--bg3);}
-.resize-row{display:flex;gap:7px;align-items:stretch;}
-.resize-row input[type=text]{flex:1;min-width:0;}
-.resize-row .btn{padding:12px 16px;}
-.dr-score-wrap{text-align:center;padding:14px 0 6px;}
-.dr-score{font-size:52px;font-weight:700;letter-spacing:-2px;line-height:1;}
-.dr-score-label{font-size:9.5px;font-weight:640;letter-spacing:1.5px;text-transform:uppercase;color:var(--fg3);margin-top:5px;}
-.dr-detail{display:flex;flex-direction:column;gap:5px;margin-top:4px;}
-.dr-row{font-size:12px;line-height:1.5;padding:2px 0;}
-.dr-err{color:var(--err);}
-.dr-warn{color:var(--warn);}
-.dr-ok{color:var(--fg2);}
-.dr-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px;}
-.dr-stat{background:var(--bg3);border:1px solid var(--line);border-radius:8px;padding:10px 8px;text-align:center;}
-.dr-stat-v{font-size:16px;font-weight:680;font-variant-numeric:tabular-nums;}
-.dr-stat-l{font-size:9px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:var(--fg3);margin-top:3px;}
-.dr-rec-label{font-size:9.5px;font-weight:640;letter-spacing:1.5px;text-transform:uppercase;color:var(--fg3);margin-top:12px;margin-bottom:5px;}
-.dr-rec-val{font-size:14px;font-weight:600;}
-.dr-fixes-label{font-size:9.5px;font-weight:640;letter-spacing:1.2px;text-transform:uppercase;color:var(--fg3);margin-top:10px;margin-bottom:4px;}
-.dr-fix{font-size:12px;color:var(--fg2);padding:2px 0;}
-.preset-cat-chips{display:flex;gap:5px;margin-bottom:2px;}
-.preset-cat-chip{flex:1;padding:9px 5px;background:var(--bg3);border:1px solid var(--line);border-radius:8px;color:var(--fg3);font:inherit;font-size:11px;font-weight:580;cursor:pointer;transition:.15s;text-align:center;}
-.preset-cat-chip:hover{background:var(--bg4);color:var(--fg2);}
-.preset-cat-chip.on{background:var(--fg);border-color:var(--fg);color:var(--bg);}
-#builtinList{display:flex;flex-direction:column;gap:6px;}
-.preset-item-btn{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:9px;background:var(--bg3);color:var(--fg);font:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:.15s;text-align:left;}
-.preset-item-btn:hover{background:var(--bg4);}
-#userPresetList{display:flex;flex-direction:column;gap:6px;}
-.preset-row{display:flex;align-items:center;gap:7px;padding:11px 13px;background:var(--bg3);border:1px solid var(--line);border-radius:9px;}
-.preset-name{flex:1;font-size:13px;font-weight:500;cursor:pointer;}
-.preset-badge{font-size:9px;font-weight:640;letter-spacing:.8px;text-transform:uppercase;color:var(--fg3);}
-.star{font-size:16px;cursor:pointer;color:var(--fg3);background:none;border:none;padding:0 2px;}
-.star.on{color:var(--fg);}
-.del{font-size:14px;cursor:pointer;color:var(--fg3);background:none;border:none;padding:0 2px;}
-.del:hover{color:var(--err);}
-input[type=text]{width:100%;padding:11px 12px;background:var(--bg3);border:1px solid var(--line);border-radius:9px;color:var(--fg);font:inherit;font-size:13px;-webkit-user-select:text;user-select:text;}
-input[type=text]::placeholder{color:var(--fg3);}
-input[type=text]:focus{outline:none;border-color:var(--fg2);}
-.prod-score-card{padding:14px;background:var(--bg3);border:1px solid var(--line);border-radius:9px;text-align:center;}
-.prod-score{font-size:40px;font-weight:700;letter-spacing:-1px;}
-.prod-label{font-size:9.5px;font-weight:640;letter-spacing:1.5px;text-transform:uppercase;color:var(--fg3);margin-top:4px;}
-.prod-detail{margin-top:12px;font-size:12px;line-height:2;text-align:left;color:var(--fg2);}
-.bar{flex-shrink:0;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:var(--bg2);border-top:1px solid var(--line);display:flex;gap:8px;}
-.bar.hide{display:none;}
-.bar-reset{flex-shrink:0;padding:12px 14px;border:1px solid var(--line);border-radius:9px;background:var(--bg3);color:var(--fg2);font:inherit;font-size:13px;font-weight:540;cursor:pointer;}
-.bar-reset:hover{background:var(--bg4);color:var(--fg);}
-.bar-apply{flex:1;padding:12px;border:none;border-radius:9px;background:var(--fg);color:var(--bg);font:inherit;font-size:14px;font-weight:660;cursor:pointer;}
-.bar-apply:hover{opacity:.9;}
-.foot{flex-shrink:0;padding:7px 16px 9px;display:flex;align-items:center;justify-content:space-between;background:var(--bg);border-top:1px solid var(--line);min-height:36px;gap:8px;}
-.msg{font-size:11px;color:var(--fg3);opacity:0;transition:opacity .25s;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
-.msg.show{opacity:1;}
-.msg.success{color:var(--fg2);}
-.msg.error{color:var(--err);}
-.msg.warning{color:var(--warn);}
-.foot-tools{display:flex;align-items:center;gap:8px;flex-shrink:0;}
-.cov{font-size:10.5px;color:var(--fg3);font-variant-numeric:tabular-nums;}
-.cov strong{color:var(--fg2);}
-.mini{padding:4px 9px;font-size:10.5px;font-weight:560;background:var(--bg3);color:var(--fg3);border:1px solid var(--line);border-radius:5px;cursor:pointer;font-family:inherit;}
-.mini:hover{background:var(--bg4);color:var(--fg);}
+      .target-strip {
+        display: flex;
+        gap: 5px;
+        padding: 6px 0 8px;
+        flex-shrink: 0;
+        align-items: center;
+      }
+      .target-label {
+        font-size: 10px;
+        font-weight: 580;
+        color: var(--fg3);
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+        margin-right: 4px;
+        white-space: nowrap;
+      }
+      .target-btn {
+        padding: 5px 11px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--bg3);
+        color: var(--fg3);
+        font: inherit;
+        font-size: 11px;
+        font-weight: 560;
+        cursor: pointer;
+        transition: 0.15s;
+      }
+      .target-btn:hover {
+        color: var(--fg);
+        background: var(--bg4);
+      }
+      .target-btn.on {
+        background: var(--fg);
+        border-color: var(--fg);
+        color: var(--bg);
+      }
+      .nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        padding-bottom: 10px;
+        flex-shrink: 0;
+      }
+      .nav button {
+        flex: 1 1 30%;
+        min-width: 90px;
+        padding: 9px 4px 7px;
+        border: none;
+        border-radius: 6px;
+        background: var(--bg3);
+        color: var(--fg3);
+        font: inherit;
+        font-size: 10px;
+        font-weight: 580;
+        cursor: pointer;
+        transition: 0.15s;
+        text-align: center;
+        line-height: 1.25;
+        border: 1px solid transparent;
+        box-sizing: border-box;
+      }
+      .nav button:hover {
+        background: var(--bg4);
+        color: var(--fg2);
+      }
+      .nav button.on {
+        background: var(--fg);
+        color: var(--bg);
+        border-color: var(--fg);
+      }
+      .nav button .tag {
+        display: block;
+        font-size: 8px;
+        font-weight: 600;
+        letter-spacing: 0.7px;
+        text-transform: uppercase;
+        opacity: 0.55;
+        margin-top: 2px;
+      }
+      .body {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        padding: 0 16px 14px;
+      }
+      .body::-webkit-scrollbar {
+        width: 6px;
+      }
+      .body::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .body::-webkit-scrollbar-thumb {
+        background: var(--bg4);
+        border-radius: 4px;
+      }
+      .pane {
+        display: none;
+        flex-direction: column;
+        gap: 18px;
+      }
+      .pane.on {
+        display: flex;
+      }
+      .sec {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .grp {
+        font-size: 9.5px;
+        font-weight: 640;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--fg3);
+      }
+      .hint {
+        font-size: 11px;
+        line-height: 1.55;
+        color: var(--fg3);
+      }
+      .stub-note {
+        padding: 13px;
+        background: var(--bg3);
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        font-size: 11.5px;
+        color: var(--fg3);
+        line-height: 1.6;
+      }
+      .stub-note strong {
+        color: var(--fg2);
+        display: block;
+        margin-bottom: 5px;
+        font-size: 12.5px;
+      }
+      .s {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+      }
+      .s-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+      }
+      .s-row label {
+        font-size: 13px;
+        font-weight: 500;
+      }
+      .s-val {
+        font-size: 13px;
+        font-weight: 650;
+        font-variant-numeric: tabular-nums;
+        min-width: 32px;
+        text-align: right;
+      }
+      .s-track {
+        position: relative;
+        height: 34px;
+        display: flex;
+        align-items: center;
+      }
+      input[type="range"] {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        height: 34px;
+        background: transparent;
+        cursor: pointer;
+        margin: 0;
+        position: relative;
+        z-index: 2;
+      }
+      input[type="range"]::-webkit-slider-runnable-track {
+        height: 34px;
+        border-radius: 8px;
+        background: var(--bg3);
+        border: 1px solid var(--line);
+      }
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 7px;
+        height: 44px;
+        margin-top: -6px;
+        border-radius: 4px;
+        background: var(--fg);
+        cursor: grab;
+        box-shadow:
+          0 0 0 1px rgba(0, 0, 0, 0.5),
+          0 3px 10px rgba(0, 0, 0, 0.5);
+      }
+      input[type="range"]::-webkit-slider-thumb:active {
+        cursor: grabbing;
+      }
+      .s-fill {
+        position: absolute;
+        left: 1px;
+        top: 1px;
+        bottom: 1px;
+        border-radius: 7px;
+        background: var(--bg4);
+        pointer-events: none;
+        z-index: 1;
+        width: 0;
+      }
+      select {
+        width: 100%;
+        padding: 11px 12px;
+        background: var(--bg3);
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        color: var(--fg);
+        font: inherit;
+        font-size: 13px;
+        cursor: pointer;
+        appearance: none;
+      }
+      select:focus {
+        outline: none;
+        border-color: var(--fg3);
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .chip {
+        flex: 1;
+        min-width: 46px;
+        padding: 10px 6px;
+        background: var(--bg3);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: var(--fg3);
+        font: inherit;
+        font-size: 11.5px;
+        font-weight: 580;
+        cursor: pointer;
+        transition: 0.15s;
+        text-align: center;
+      }
+      .chip:hover {
+        background: var(--bg4);
+        color: var(--fg2);
+      }
+      .chip.on {
+        background: var(--fg);
+        border-color: var(--fg);
+        color: var(--bg);
+      }
+      .tog {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 11px 12px;
+        background: var(--bg3);
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        cursor: pointer;
+      }
+      .tog input {
+        width: 16px;
+        height: 16px;
+        accent-color: var(--fg);
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .tog span {
+        font-size: 13px;
+        font-weight: 500;
+      }
+      .actions {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+      }
+      .btn {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: var(--bg3);
+        color: var(--fg);
+        font: inherit;
+        font-size: 13px;
+        font-weight: 540;
+        cursor: pointer;
+        transition: 0.15s;
+        text-align: left;
+      }
+      .btn:hover {
+        background: var(--bg4);
+      }
+      .btn:active {
+        transform: scale(0.99);
+      }
+      .btn.primary {
+        background: var(--fg);
+        color: var(--bg);
+        border-color: var(--fg);
+        font-weight: 650;
+      }
+      .btn.primary:hover {
+        opacity: 0.9;
+      }
+      .btn:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+      .btn:disabled:hover {
+        background: var(--bg3);
+      }
+      .resize-row {
+        display: flex;
+        gap: 7px;
+        align-items: stretch;
+      }
+      .resize-row input[type="text"] {
+        flex: 1;
+        min-width: 0;
+      }
+      .resize-row .btn {
+        padding: 12px 16px;
+      }
+      .dr-score-wrap {
+        text-align: center;
+        padding: 14px 0 6px;
+      }
+      .dr-score {
+        font-size: 52px;
+        font-weight: 700;
+        letter-spacing: -2px;
+        line-height: 1;
+      }
+      .dr-score-label {
+        font-size: 9.5px;
+        font-weight: 640;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--fg3);
+        margin-top: 5px;
+      }
+      .dr-detail {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        margin-top: 4px;
+      }
+      .dr-row {
+        font-size: 12px;
+        line-height: 1.5;
+        padding: 2px 0;
+      }
+      .dr-err {
+        color: var(--err);
+      }
+      .dr-warn {
+        color: var(--warn);
+      }
+      .dr-ok {
+        color: var(--fg2);
+      }
+      .dr-stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .dr-stat {
+        background: var(--bg3);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px 8px;
+        text-align: center;
+      }
+      .dr-stat-v {
+        font-size: 16px;
+        font-weight: 680;
+        font-variant-numeric: tabular-nums;
+      }
+      .dr-stat-l {
+        font-size: 9px;
+        font-weight: 600;
+        letter-spacing: 0.7px;
+        text-transform: uppercase;
+        color: var(--fg3);
+        margin-top: 3px;
+      }
+      .dr-rec-label {
+        font-size: 9.5px;
+        font-weight: 640;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--fg3);
+        margin-top: 12px;
+        margin-bottom: 5px;
+      }
+      .dr-rec-val {
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .dr-fixes-label {
+        font-size: 9.5px;
+        font-weight: 640;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+        color: var(--fg3);
+        margin-top: 10px;
+        margin-bottom: 4px;
+      }
+      .dr-fix {
+        font-size: 12px;
+        color: var(--fg2);
+        padding: 2px 0;
+      }
+      .preset-cat-chips {
+        display: flex;
+        gap: 5px;
+        margin-bottom: 2px;
+      }
+      .preset-cat-chip {
+        flex: 1;
+        padding: 9px 5px;
+        background: var(--bg3);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: var(--fg3);
+        font: inherit;
+        font-size: 11px;
+        font-weight: 580;
+        cursor: pointer;
+        transition: 0.15s;
+        text-align: center;
+      }
+      .preset-cat-chip:hover {
+        background: var(--bg4);
+        color: var(--fg2);
+      }
+      .preset-cat-chip.on {
+        background: var(--fg);
+        border-color: var(--fg);
+        color: var(--bg);
+      }
+      #builtinList {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .preset-item-btn {
+        width: 100%;
+        padding: 11px 13px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: var(--bg3);
+        color: var(--fg);
+        font: inherit;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: 0.15s;
+        text-align: left;
+      }
+      .preset-item-btn:hover {
+        background: var(--bg4);
+      }
+      #userPresetList {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .preset-row {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 11px 13px;
+        background: var(--bg3);
+        border: 1px solid var(--line);
+        border-radius: 9px;
+      }
+      .preset-name {
+        flex: 1;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+      }
+      .preset-badge {
+        font-size: 9px;
+        font-weight: 640;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+        color: var(--fg3);
+      }
+      .star {
+        font-size: 16px;
+        cursor: pointer;
+        color: var(--fg3);
+        background: none;
+        border: none;
+        padding: 0 2px;
+      }
+      .star.on {
+        color: var(--fg);
+      }
+      .del {
+        font-size: 14px;
+        cursor: pointer;
+        color: var(--fg3);
+        background: none;
+        border: none;
+        padding: 0 2px;
+      }
+      .del:hover {
+        color: var(--err);
+      }
+      input[type="text"] {
+        width: 100%;
+        padding: 11px 12px;
+        background: var(--bg3);
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        color: var(--fg);
+        font: inherit;
+        font-size: 13px;
+        -webkit-user-select: text;
+        user-select: text;
+      }
+      input[type="text"]::placeholder {
+        color: var(--fg3);
+      }
+      input[type="text"]:focus {
+        outline: none;
+        border-color: var(--fg2);
+      }
+      .prod-score-card {
+        padding: 14px;
+        background: var(--bg3);
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        text-align: center;
+      }
+      .prod-score {
+        font-size: 40px;
+        font-weight: 700;
+        letter-spacing: -1px;
+      }
+      .prod-label {
+        font-size: 9.5px;
+        font-weight: 640;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--fg3);
+        margin-top: 4px;
+      }
+      .prod-detail {
+        margin-top: 12px;
+        font-size: 12px;
+        line-height: 2;
+        text-align: left;
+        color: var(--fg2);
+      }
+      .bar {
+        flex-shrink: 0;
+        padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+        background: var(--bg2);
+        border-top: 1px solid var(--line);
+        display: flex;
+        gap: 8px;
+      }
+      .bar.hide {
+        display: none;
+      }
+      .bar-reset {
+        flex-shrink: 0;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: var(--bg3);
+        color: var(--fg2);
+        font: inherit;
+        font-size: 13px;
+        font-weight: 540;
+        cursor: pointer;
+      }
+      .bar-reset:hover {
+        background: var(--bg4);
+        color: var(--fg);
+      }
+      .bar-apply {
+        flex: 1;
+        padding: 12px;
+        border: none;
+        border-radius: 9px;
+        background: var(--fg);
+        color: var(--bg);
+        font: inherit;
+        font-size: 14px;
+        font-weight: 660;
+        cursor: pointer;
+      }
+      .bar-apply:hover {
+        opacity: 0.9;
+      }
+      .foot {
+        flex-shrink: 0;
+        padding: 7px 16px 9px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--bg);
+        border-top: 1px solid var(--line);
+        min-height: 36px;
+        gap: 8px;
+      }
+      .msg {
+        font-size: 11px;
+        color: var(--fg3);
+        opacity: 0;
+        transition: opacity 0.25s;
+        flex: 1;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+      .msg.show {
+        opacity: 1;
+      }
+      .msg.success {
+        color: var(--fg2);
+      }
+      .msg.error {
+        color: var(--err);
+      }
+      .msg.warning {
+        color: var(--warn);
+      }
+      .foot-tools {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+      }
+      .cov {
+        font-size: 10.5px;
+        color: var(--fg3);
+        font-variant-numeric: tabular-nums;
+      }
+      .cov strong {
+        color: var(--fg2);
+      }
+      .mini {
+        padding: 4px 9px;
+        font-size: 10.5px;
+        font-weight: 560;
+        background: var(--bg3);
+        color: var(--fg3);
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .mini:hover {
+        background: var(--bg4);
+        color: var(--fg);
+      }
 
-/* CHANNEL EDITOR (live colour-editable split layers) */
-.channel-row{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg3);border:1px solid var(--line);border-radius:9px;margin-top:6px;}
-.channel-row input[type=color]{width:32px;height:32px;border:1px solid var(--line);border-radius:7px;padding:0;background:none;cursor:pointer;flex-shrink:0;}
-.channel-row span{font-size:13px;font-weight:540;}
+      /* CHANNEL EDITOR (live colour-editable split layers) */
+      .channel-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 12px;
+        background: var(--bg3);
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        margin-top: 6px;
+      }
+      .channel-row input[type="color"] {
+        width: 32px;
+        height: 32px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        padding: 0;
+        background: none;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .channel-row span {
+        font-size: 13px;
+        font-weight: 540;
+      }
 
-/* DIAGNOSTICS */
-.diag-log{background:var(--bg3);border:1px solid var(--line);border-radius:9px;padding:12px 13px;font-family:"SF Mono",Monaco,Consolas,monospace;font-size:10.5px;line-height:1.7;color:var(--fg2);white-space:pre-wrap;word-break:break-word;max-height:50vh;overflow-y:auto;-webkit-user-select:text;user-select:text;}
+      /* DIAGNOSTICS */
+      .diag-log {
+        background: var(--bg3);
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        padding: 12px 13px;
+        font-family: "SF Mono", Monaco, Consolas, monospace;
+        font-size: 10.5px;
+        line-height: 1.7;
+        color: var(--fg2);
+        white-space: pre-wrap;
+        word-break: break-word;
+        max-height: 50vh;
+        overflow-y: auto;
+        -webkit-user-select: text;
+        user-select: text;
+      }
 
-/* COLOUR MODE ROW */
-.colour-mode-row{display:flex;align-items:center;gap:10px;padding:2px 0;}
+      /* COLOUR MODE ROW */
+      .colour-mode-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 2px 0;
+      }
 
-/* MODAL */
-.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;}
-.modal-overlay.hide{display:none;}
-.modal-card{background:var(--bg2);border:1px solid var(--line);border-radius:14px;width:100%;max-width:480px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5);}
-.modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--line);flex-shrink:0;}
-.modal-head h3{font-size:15px;font-weight:650;}
-.modal-close{background:none;border:none;color:var(--fg3);font-size:22px;cursor:pointer;line-height:1;padding:0 4px;}
-.modal-close:hover{color:var(--fg);}
-.modal-body{padding:16px 18px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;}
-.modal-body::-webkit-scrollbar{width:6px;}
-.modal-body::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:4px;}
+      /* MODAL */
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.78);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 20px;
+      }
+      .modal-overlay.hide {
+        display: none;
+      }
+      .modal-card {
+        background: var(--bg2);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        width: 100%;
+        max-width: 480px;
+        max-height: 85vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      }
+      .modal-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 18px;
+        border-bottom: 1px solid var(--line);
+        flex-shrink: 0;
+      }
+      .modal-head h3 {
+        font-size: 15px;
+        font-weight: 650;
+      }
+      .modal-close {
+        background: none;
+        border: none;
+        color: var(--fg3);
+        font-size: 22px;
+        cursor: pointer;
+        line-height: 1;
+        padding: 0 4px;
+      }
+      .modal-close:hover {
+        color: var(--fg);
+      }
+      .modal-body {
+        padding: 16px 18px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .modal-body::-webkit-scrollbar {
+        width: 6px;
+      }
+      .modal-body::-webkit-scrollbar-thumb {
+        background: var(--bg4);
+        border-radius: 4px;
+      }
 
-/* DEEP ANALYSIS RESULTS */
-.deep-progress{text-align:center;padding:30px 10px;}
-.deep-progress-bar{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;margin-top:14px;}
-.deep-progress-fill{height:100%;background:var(--fg);width:0%;transition:width .3s;}
-.deep-section{display:flex;flex-direction:column;gap:6px;}
-.deep-label{font-size:9.5px;font-weight:640;letter-spacing:1.4px;text-transform:uppercase;color:var(--fg3);}
-.deep-rec{background:var(--bg3);border:1px solid var(--line);border-radius:9px;padding:12px 13px;}
-.deep-rec-title{font-size:13.5px;font-weight:650;margin-bottom:3px;}
-.deep-rec-sub{font-size:11.5px;color:var(--fg3);line-height:1.5;}
-.deep-row{font-size:12px;line-height:1.6;color:var(--fg2);}
-.deep-row.warn{color:var(--warn);}
-.deep-row.err{color:var(--err);}
-.deep-stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.deep-stat{background:var(--bg3);border:1px solid var(--line);border-radius:8px;padding:10px;text-align:center;}
-.deep-stat-v{font-size:15px;font-weight:680;}
-.deep-stat-l{font-size:8.5px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--fg3);margin-top:2px;}
-</style>
-</head>
-<body>
-<div class="app">
-<div class="hd">
-  <div><h1>Photoneshop</h1><p>Garment Print Platform · build 19 (auto separation)</p></div>
-  <div class="toggle-switch" id="modeToggle" data-on="modeAdvanced" data-off="modeBasic">
-    <div class="toggle-thumb"></div>
-    <button id="modeBasic">Basic</button><button id="modeAdvanced">Advanced</button>
-  </div>
-</div>
-<div class="body">
-<div class="target-strip">
-  <span class="target-label">Target</span>
-  <button class="target-btn on" data-target="visible">All Visible</button>
-  <button class="target-btn" data-target="active">Active Layer</button>
-  <button class="target-btn" data-target="selection">Selection</button>
-</div>
-<div class="nav">
-  <button class="on" data-tab="1">Print Doctor<span class="tag">Analyse</span></button>
-  <button data-tab="2">Design Studio<span class="tag">Create</span></button>
-  <button data-tab="3">Halftone<span class="tag">Dots</span></button>
-  <button data-tab="4">Colours<span class="tag">Reduce</span></button>
-  <button data-tab="5">Separation<span class="tag">Channels</span></button>
-  <button data-tab="6">White Ink<span class="tag">Underbase</span></button>
-  <button data-tab="7">Cleanup<span class="tag">Fix</span></button>
-  <button data-tab="8">Garment<span class="tag">Fabric</span></button>
-  <button data-tab="9">DTG<span class="tag">Direct</span></button>
-  <button data-tab="10">DTF<span class="tag">Film</span></button>
-  <button data-tab="11">Preview<span class="tag">Simulate</span></button>
-  <button data-tab="12">Production<span class="tag">Output</span></button>
-  <button data-tab="13">Export<span class="tag">Save</span></button>
-  <button data-tab="14">Presets<span class="tag">Load/Save</span></button>
-  <button data-tab="15">Diagnostics<span class="tag">Debug</span></button>
-</div>
+      /* DEEP ANALYSIS RESULTS */
+      .deep-progress {
+        text-align: center;
+        padding: 30px 10px;
+      }
+      .deep-progress-bar {
+        height: 4px;
+        background: var(--bg3);
+        border-radius: 2px;
+        overflow: hidden;
+        margin-top: 14px;
+      }
+      .deep-progress-fill {
+        height: 100%;
+        background: var(--fg);
+        width: 0%;
+        transition: width 0.3s;
+      }
+      .deep-section {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .deep-label {
+        font-size: 9.5px;
+        font-weight: 640;
+        letter-spacing: 1.4px;
+        text-transform: uppercase;
+        color: var(--fg3);
+      }
+      .deep-rec {
+        background: var(--bg3);
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        padding: 12px 13px;
+      }
+      .deep-rec-title {
+        font-size: 13.5px;
+        font-weight: 650;
+        margin-bottom: 3px;
+      }
+      .deep-rec-sub {
+        font-size: 11.5px;
+        color: var(--fg3);
+        line-height: 1.5;
+      }
+      .deep-row {
+        font-size: 12px;
+        line-height: 1.6;
+        color: var(--fg2);
+      }
+      .deep-row.warn {
+        color: var(--warn);
+      }
+      .deep-row.err {
+        color: var(--err);
+      }
+      .deep-stats-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .deep-stat {
+        background: var(--bg3);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px;
+        text-align: center;
+      }
+      .deep-stat-v {
+        font-size: 15px;
+        font-weight: 680;
+      }
+      .deep-stat-l {
+        font-size: 8.5px;
+        font-weight: 600;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+        color: var(--fg3);
+        margin-top: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <div class="hd">
+        <div>
+          <h1>Photoneshop</h1>
+          <p>Garment Print Platform · build 19 (auto separation)</p>
+        </div>
+        <div class="toggle-switch" id="modeToggle" data-on="modeAdvanced" data-off="modeBasic">
+          <div class="toggle-thumb"></div>
+          <button id="modeBasic">Basic</button><button id="modeAdvanced">Advanced</button>
+        </div>
+      </div>
+      <div class="body">
+        <div class="target-strip">
+          <span class="target-label">Target</span>
+          <button class="target-btn on" data-target="visible">All Visible</button>
+          <button class="target-btn" data-target="active">Active Layer</button>
+          <button class="target-btn" data-target="selection">Selection</button>
+        </div>
+        <div class="nav">
+          <button class="on" data-tab="1">Print Doctor<span class="tag">Analyse</span></button>
+          <button data-tab="2">Design Studio<span class="tag">Create</span></button>
+          <button data-tab="3">Halftone<span class="tag">Dots</span></button>
+          <button data-tab="4">Colours<span class="tag">Reduce</span></button>
+          <button data-tab="5">Separation<span class="tag">Channels</span></button>
+          <button data-tab="6">White Ink<span class="tag">Underbase</span></button>
+          <button data-tab="7">Cleanup<span class="tag">Fix</span></button>
+          <button data-tab="8">Garment<span class="tag">Fabric</span></button>
+          <button data-tab="9">DTG<span class="tag">Direct</span></button>
+          <button data-tab="10">DTF<span class="tag">Film</span></button>
+          <button data-tab="11">Preview<span class="tag">Simulate</span></button>
+          <button data-tab="12">Production<span class="tag">Output</span></button>
+          <button data-tab="13">Export<span class="tag">Save</span></button>
+          <button data-tab="14">Presets<span class="tag">Load/Save</span></button>
+          <button data-tab="15">Diagnostics<span class="tag">Debug</span></button>
+        </div>
 
-<div class="pane on" id="p1">
-  <div class="sec">
-    <div class="actions">
-      <button class="btn primary" id="runDoctor">Analyse this artwork</button>
-      <button class="btn" id="runDeep">Deep analysis (pixel-level)</button>
-    </div>
-    <div class="dr-score-wrap"><div class="dr-score" id="drScore">—</div><div class="dr-score-label">Printability Score</div></div>
-    <div class="dr-detail" id="drDetail"><p class="hint">Open an image and run analysis. Get resolution, ink coverage, colour complexity, recommended print method, and actionable fixes.</p></div>
-    <div id="drRec"></div>
-  </div>
-  <div class="sec">
-    <div class="grp">Quick Fixes</div>
-    <div class="actions">
-      <button class="btn" id="fixUpscale">Upscale to 300 DPI</button>
-    </div>
-    <div class="resize-row">
-      <input type="text" id="resizeW" placeholder="Width (in)" inputmode="decimal">
-      <input type="text" id="resizeH" placeholder="Height (in)" inputmode="decimal">
-      <button class="btn" id="fixResize" style="flex-shrink:0;width:auto;">Resize</button>
-    </div>
-    <div class="actions">
-      <button class="btn" id="fixEnhance">Auto enhance</button>
-      <button class="btn" id="fixFlatten">Flatten layers</button>
-    </div>
-    <div class="colour-mode-row">
-      <span class="target-label">Colour Mode</span>
-      <div class="toggle-switch" id="colourModeToggle">
-        <div class="toggle-thumb"></div>
-        <button class="on" id="toggleRGB" data-mode="RGB">RGB</button>
-        <button id="toggleCMYK" data-mode="CMYK">CMYK</button>
+        <div class="pane on" id="p1">
+          <div class="sec">
+            <div class="actions">
+              <button class="btn primary" id="runDoctor">Analyse this artwork</button>
+              <button class="btn" id="runDeep">Deep analysis (pixel-level)</button>
+            </div>
+            <div class="dr-score-wrap">
+              <div class="dr-score" id="drScore">—</div>
+              <div class="dr-score-label">Printability Score</div>
+            </div>
+            <div class="dr-detail" id="drDetail">
+              <p class="hint">
+                Open an image and run analysis. Get resolution, ink coverage, colour complexity, recommended print
+                method, and actionable fixes.
+              </p>
+            </div>
+            <div id="drRec"></div>
+          </div>
+          <div class="sec">
+            <div class="grp">Quick Fixes</div>
+            <div class="actions">
+              <button class="btn" id="fixUpscale">Upscale to 300 DPI</button>
+            </div>
+            <div class="resize-row">
+              <input type="text" id="resizeW" placeholder="Width (in)" inputmode="decimal" />
+              <input type="text" id="resizeH" placeholder="Height (in)" inputmode="decimal" />
+              <button class="btn" id="fixResize" style="flex-shrink: 0; width: auto">Resize</button>
+            </div>
+            <div class="actions">
+              <button class="btn" id="fixEnhance">Auto enhance</button>
+              <button class="btn" id="fixFlatten">Flatten layers</button>
+            </div>
+            <div class="colour-mode-row">
+              <span class="target-label">Colour Mode</span>
+              <div class="toggle-switch" id="colourModeToggle">
+                <div class="toggle-thumb"></div>
+                <button class="on" id="toggleRGB" data-mode="RGB">RGB</button>
+                <button id="toggleCMYK" data-mode="CMYK">CMYK</button>
+              </div>
+            </div>
+            <p class="hint" id="fixHint">Run analysis first — fixes activate based on what your artwork needs.</p>
+          </div>
+        </div>
+
+        <!-- DEEP ANALYSIS MODAL -->
+        <div class="modal-overlay hide" id="deepModal">
+          <div class="modal-card">
+            <div class="modal-head">
+              <h3>Deep Analysis</h3>
+              <button class="modal-close" id="deepClose">&times;</button>
+            </div>
+            <div class="modal-body" id="deepBody">
+              <p class="hint">
+                Scans your artwork at high resolution — far deeper than the quick check — to recommend the best halftone
+                settings, colour profile, and flag pixel-level issues a quick scan would miss.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="pane" id="p2">
+          <div class="sec">
+            <div class="grp">Threshold</div>
+            <div class="s">
+              <div class="s-row"><label>Level</label><span class="s-val" id="threshV">128</span></div>
+              <div class="s-track">
+                <div class="s-fill" id="threshF"></div>
+                <input type="range" id="thresh" min="0" max="255" value="128" />
+              </div>
+            </div>
+            <div class="actions"><button class="btn" id="autoAnalyse">Auto-detect optimal threshold</button></div>
+          </div>
+          <div class="sec">
+            <div class="grp">Tone</div>
+            <div class="s">
+              <div class="s-row"><label>Exposure</label><span class="s-val" id="exposureV">0</span></div>
+              <div class="s-track">
+                <div class="s-fill" id="exposureF"></div>
+                <input type="range" id="exposure" min="-100" max="100" value="0" />
+              </div>
+            </div>
+            <div class="s">
+              <div class="s-row"><label>Highlights</label><span class="s-val" id="highlightV">0</span></div>
+              <div class="s-track">
+                <div class="s-fill" id="highlightF"></div>
+                <input type="range" id="highlight" min="0" max="100" value="0" />
+              </div>
+            </div>
+            <div class="s">
+              <div class="s-row"><label>Shadow Lift</label><span class="s-val" id="shadowV">0</span></div>
+              <div class="s-track">
+                <div class="s-fill" id="shadowF"></div>
+                <input type="range" id="shadow" min="0" max="100" value="0" />
+              </div>
+            </div>
+            <div class="s">
+              <div class="s-row"><label>Brightness</label><span class="s-val" id="brightV">0</span></div>
+              <div class="s-track">
+                <div class="s-fill" id="brightF"></div>
+                <input type="range" id="bright" min="-100" max="100" value="0" />
+              </div>
+            </div>
+            <div class="s">
+              <div class="s-row"><label>Contrast</label><span class="s-val" id="contrastV">0</span></div>
+              <div class="s-track">
+                <div class="s-fill" id="contrastF"></div>
+                <input type="range" id="contrast" min="-100" max="100" value="0" />
+              </div>
+            </div>
+            <div class="s">
+              <div class="s-row"><label>Blur</label><span class="s-val" id="blurV">0</span></div>
+              <div class="s-track">
+                <div class="s-fill" id="blurF"></div>
+                <input type="range" id="blur" min="0" max="100" value="0" />
+              </div>
+            </div>
+          </div>
+          <div class="sec">
+            <div class="grp">Vintage</div>
+            <div class="s">
+              <div class="s-row"><label>Fade</label><span class="s-val" id="fadeV">0</span></div>
+              <div class="s-track">
+                <div class="s-fill" id="fadeF"></div>
+                <input type="range" id="fade" min="0" max="100" value="0" />
+              </div>
+            </div>
+            <div class="s">
+              <div class="s-row"><label>Distress</label><span class="s-val" id="distressV">0</span></div>
+              <div class="s-track">
+                <div class="s-fill" id="distressF"></div>
+                <input type="range" id="distress" min="0" max="100" value="0" />
+              </div>
+            </div>
+            <div class="s">
+              <div class="s-row"><label>Ink Bleed</label><span class="s-val" id="bleedV">0</span></div>
+              <div class="s-track">
+                <div class="s-fill" id="bleedF"></div>
+                <input type="range" id="bleed" min="0" max="30" value="0" />
+              </div>
+            </div>
+            <div class="s">
+              <div class="s-row"><label>Grain</label><span class="s-val" id="grainV">0</span></div>
+              <div class="s-track">
+                <div class="s-fill" id="grainF"></div>
+                <input type="range" id="grain" min="0" max="100" value="0" />
+              </div>
+            </div>
+            <div class="s">
+              <div class="s-row"><label>Effect</label></div>
+              <select id="effect">
+                <option value="none">No effect</option>
+                <option value="photocopy">Photocopy</option>
+                <option value="newspaper">Newspaper</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="pane" id="p3">
+          <div class="sec">
+            <div class="grp">Settings</div>
+            <div class="s">
+              <div class="s-row"><label>LPI (frequency)</label><span class="s-val" id="lpiV">45</span></div>
+              <div class="s-track">
+                <div class="s-fill" id="lpiF"></div>
+                <input type="range" id="lpi" min="20" max="100" value="45" />
+              </div>
+            </div>
+            <div class="s">
+              <div class="s-row"><label>Angle</label><span class="s-val" id="htAngleV">45</span></div>
+              <div class="s-track">
+                <div class="s-fill" id="htAngleF"></div>
+                <input type="range" id="htAngle" min="0" max="90" value="45" step="15" />
+              </div>
+            </div>
+            <div class="s">
+              <div class="s-row"><label>Dot Size</label><span class="s-val" id="htSizeV">8</span></div>
+              <div class="s-track">
+                <div class="s-fill" id="htSizeF"></div>
+                <input type="range" id="htSize" min="4" max="30" value="8" />
+              </div>
+            </div>
+            <div class="s">
+              <div class="s-row"><label>Dot Gain</label><span class="s-val" id="dotGainV">0</span></div>
+              <div class="s-track">
+                <div class="s-fill" id="dotGainF"></div>
+                <input type="range" id="dotGain" min="0" max="40" value="0" />
+              </div>
+            </div>
+            <div class="s">
+              <div class="s-row"><label>Amount</label><span class="s-val" id="halftoneV">100</span></div>
+              <div class="s-track">
+                <div class="s-fill" id="halftoneF"></div>
+                <input type="range" id="halftone" min="0" max="100" value="100" />
+              </div>
+            </div>
+            <div class="channel-row" style="margin-top: 2px">
+              <input type="color" id="htColor" value="#000000" /><span>Ink Colour</span>
+            </div>
+          </div>
+          <div class="actions"><button class="btn primary" id="applyHalftone">Apply halftone</button></div>
+        </div>
+
+        <div class="pane" id="p4">
+          <div class="sec">
+            <div class="grp">Target Colour Count</div>
+            <div class="chips" id="colorChips">
+              <button class="chip" data-colors="2">2</button><button class="chip" data-colors="3">3</button>
+              <button class="chip on" data-colors="4">4</button><button class="chip" data-colors="6">6</button>
+              <button class="chip" data-colors="8">8</button><button class="chip" data-colors="10">10</button>
+            </div>
+            <p class="hint">Creates one real, named, coloured layer per detected colour — not a flattened raster.</p>
+          </div>
+          <div class="actions">
+            <button class="btn primary" id="reduceColors">Split into colour layers</button>
+            <button class="btn" id="exportSpots">Export spot channels + PNG</button>
+          </div>
+          <div class="sec" id="channelEditor"></div>
+        </div>
+
+        <div class="pane" id="p5">
+          <div class="sec">
+            <div class="grp">Type</div>
+            <div class="chips" id="sepChips">
+              <button class="chip on" data-sep="spot">Spot</button>
+              <button class="chip" data-sep="cmyk">CMYK</button>
+              <button class="chip" data-sep="simprocess">Sim Process</button>
+            </div>
+          </div>
+          <div class="sec" id="sepColorCountSec">
+            <div class="grp">Colour Count</div>
+            <div class="chips" id="sepColorChips">
+              <button class="chip" data-sepcolors="2">2</button><button class="chip" data-sepcolors="3">3</button>
+              <button class="chip on" data-sepcolors="4">4</button><button class="chip" data-sepcolors="6">6</button>
+              <button class="chip" data-sepcolors="8">8</button>
+            </div>
+          </div>
+          <div class="sec">
+            <div class="grp">Auto Options</div>
+            <label class="tog"
+              ><input type="checkbox" id="sepAutoHalftone" checked /><span
+                >Auto-halftone each channel (rotated angles)</span
+              ></label
+            >
+            <label class="tog"
+              ><input type="checkbox" id="sepRegMarks" checked /><span>Add registration marks</span></label
+            >
+            <div class="s">
+              <div class="s-row"><label>Choke</label><span class="s-val" id="sepChokeV">0</span></div>
+              <div class="s-track">
+                <div class="s-fill" id="sepChokeF"></div>
+                <input type="range" id="sepChoke" min="0" max="20" value="0" />
+              </div>
+            </div>
+          </div>
+          <div class="actions"><button class="btn primary" id="autoSeparate">Auto separate</button></div>
+          <div class="sec">
+            <div class="grp">Quick Tools</div>
+            <div class="actions">
+              <button class="btn" id="shiftColors">Cycle colour palette</button>
+              <button class="btn" id="applyKnockout">Apply ink-saving knockout</button>
+            </div>
+          </div>
+          <div class="stub-note">
+            <strong>Full Separation Engine</strong>Auto Separate above covers spot / CMYK / simulated-process channel
+            splitting, per-channel halftone at rotated screen angles, choke, and registration marks. Advanced spread and
+            vector crop marks are still planned.
+          </div>
+        </div>
+
+        <div class="pane" id="p6">
+          <div class="sec">
+            <div class="grp">Underbase</div>
+            <div class="s">
+              <div class="s-row"><label>White Density</label><span class="s-val" id="wDensityV">100</span></div>
+              <div class="s-track">
+                <div class="s-fill" id="wDensityF"></div>
+                <input type="range" id="wDensity" min="50" max="100" value="100" />
+              </div>
+            </div>
+            <div class="s">
+              <div class="s-row"><label>Choke</label><span class="s-val" id="wChokeV">0</span></div>
+              <div class="s-track">
+                <div class="s-fill" id="wChokeF"></div>
+                <input type="range" id="wChoke" min="0" max="20" value="0" />
+              </div>
+            </div>
+            <div class="s">
+              <div class="s-row"><label>Feather</label><span class="s-val" id="wFeatherV">0</span></div>
+              <div class="s-track">
+                <div class="s-fill" id="wFeatherF"></div>
+                <input type="range" id="wFeather" min="0" max="20" value="0" />
+              </div>
+            </div>
+            <div class="s">
+              <div class="s-row"><label>Highlight Boost</label><span class="s-val" id="wHlV">0</span></div>
+              <div class="s-track">
+                <div class="s-fill" id="wHlF"></div>
+                <input type="range" id="wHl" min="0" max="100" value="0" />
+              </div>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn primary" id="generateUnderbase">Generate white underbase</button>
+          </div>
+        </div>
+
+        <div class="pane" id="p7">
+          <div class="sec">
+            <div class="actions">
+              <button class="btn" id="removeStray">Remove isolated pixels</button>
+              <button class="btn" id="removeHalos">Remove white halos</button>
+              <button class="btn" id="removeJpeg">Fix JPEG artefacts</button>
+              <button class="btn" id="fixAI">Fix AI-generated artwork</button>
+              <button class="btn" id="smoothEdges">Smooth jagged edges</button>
+              <button class="btn" id="autoSharpen">Auto sharpen</button>
+            </div>
+            <p class="hint">Each fix creates a new layer in the Cleanup group. Original untouched.</p>
+          </div>
+        </div>
+
+        <div class="pane" id="p8">
+          <div class="sec">
+            <div class="grp">Fabric</div>
+            <div class="chips" id="garmentChips">
+              <button class="chip on" data-garment="white">White</button
+              ><button class="chip" data-garment="black">Black</button>
+              <button class="chip" data-garment="heather">Heather</button
+              ><button class="chip" data-garment="navy">Navy</button>
+              <button class="chip" data-garment="grey">Grey</button
+              ><button class="chip" data-garment="coloured">Colour</button>
+            </div>
+          </div>
+          <label class="tog"
+            ><input type="checkbox" id="autoUnderbase" checked /><span
+              >Auto white underbase on dark garments</span
+            ></label
+          >
+          <div class="actions"><button class="btn primary" id="applyGarment">Optimise for garment</button></div>
+        </div>
+
+        <div class="pane" id="p9">
+          <div class="sec">
+            <div class="grp">Printer</div>
+            <div class="chips" id="dtgChips">
+              <button class="chip on" data-dtg="epson">Epson</button
+              ><button class="chip" data-dtg="brother">Brother</button>
+              <button class="chip" data-dtg="kornit">Kornit</button><button class="chip" data-dtg="other">Other</button>
+            </div>
+          </div>
+          <div class="sec">
+            <div class="s">
+              <div class="s-row"><label>Ink Reduction</label><span class="s-val" id="dtgInkV">0</span></div>
+              <div class="s-track">
+                <div class="s-fill" id="dtgInkF"></div>
+                <input type="range" id="dtgInk" min="0" max="40" value="0" />
+              </div>
+            </div>
+            <div class="s">
+              <div class="s-row"><label>White Boost</label><span class="s-val" id="dtgWhiteV">0</span></div>
+              <div class="s-track">
+                <div class="s-fill" id="dtgWhiteF"></div>
+                <input type="range" id="dtgWhite" min="0" max="40" value="0" />
+              </div>
+            </div>
+            <div class="s">
+              <div class="s-row"><label>Detail Preserve</label><span class="s-val" id="dtgDetailV">0</span></div>
+              <div class="s-track">
+                <div class="s-fill" id="dtgDetailF"></div>
+                <input type="range" id="dtgDetail" min="0" max="100" value="0" />
+              </div>
+            </div>
+          </div>
+          <div class="actions"><button class="btn primary" id="applyDTG">Apply DTG optimisation</button></div>
+        </div>
+
+        <div class="pane" id="p10">
+          <div class="sec">
+            <div class="grp">Film Type</div>
+            <div class="chips" id="dtfChips">
+              <button class="chip on" data-dtf="standard">Standard</button
+              ><button class="chip" data-dtf="matte">Matte</button>
+              <button class="chip" data-dtf="soft">Soft Feel</button
+              ><button class="chip" data-dtf="stretch">Stretch</button>
+            </div>
+          </div>
+          <div class="sec">
+            <div class="s">
+              <div class="s-row"><label>Colour Boost</label><span class="s-val" id="dtfColV">0</span></div>
+              <div class="s-track">
+                <div class="s-fill" id="dtfColF"></div>
+                <input type="range" id="dtfCol" min="0" max="40" value="0" />
+              </div>
+            </div>
+            <div class="s">
+              <div class="s-row"><label>Ink Reduction</label><span class="s-val" id="dtfInkV">0</span></div>
+              <div class="s-track">
+                <div class="s-fill" id="dtfInkF"></div>
+                <input type="range" id="dtfInk" min="0" max="40" value="0" />
+              </div>
+            </div>
+            <div class="s">
+              <div class="s-row"><label>Sharpening</label><span class="s-val" id="dtfSharpV">0</span></div>
+              <div class="s-track">
+                <div class="s-fill" id="dtfSharpF"></div>
+                <input type="range" id="dtfSharp" min="0" max="100" value="0" />
+              </div>
+            </div>
+          </div>
+          <div class="actions"><button class="btn primary" id="applyDTF">Apply DTF optimisation</button></div>
+        </div>
+
+        <div class="pane" id="p11">
+          <div class="sec">
+            <div class="grp">Garment Colour</div>
+            <div class="chips" id="previewGarmentChips">
+              <button class="chip on" data-prevgarment="white">White</button
+              ><button class="chip" data-prevgarment="black">Black</button>
+              <button class="chip" data-prevgarment="heather">Heather</button
+              ><button class="chip" data-prevgarment="navy">Navy</button>
+              <button class="chip" data-prevgarment="red">Red</button
+              ><button class="chip" data-prevgarment="sand">Sand</button>
+            </div>
+          </div>
+          <div class="stub-note">
+            <strong>Garment Preview Simulator</strong>Realistic fabric simulation with ink soak, garment colour, and
+            method-specific rendering coming next phase.
+          </div>
+        </div>
+
+        <div class="pane" id="p12">
+          <div class="prod-score-card">
+            <div class="prod-score" id="prodScore">—</div>
+            <div class="prod-label">Printability Score</div>
+            <div class="prod-detail" id="prodDetail">Run check to see results.</div>
+          </div>
+          <div class="actions"><button class="btn primary" id="runProduction">Run production check</button></div>
+        </div>
+
+        <div class="pane" id="p13">
+          <div class="sec">
+            <div class="grp">Screen Print</div>
+            <div class="actions">
+              <button class="btn" id="exportScreen">Export B&amp;W screens + registration</button>
+            </div>
+          </div>
+          <div class="sec">
+            <div class="grp">DTG</div>
+            <div class="actions"><button class="btn" id="exportDTG">Export flat alpha PNG</button></div>
+          </div>
+          <div class="sec">
+            <div class="grp">DTF</div>
+            <div class="actions"><button class="btn" id="exportDTF">Export DTF-ready PNG</button></div>
+          </div>
+        </div>
+
+        <div class="pane" id="p14">
+          <div class="sec">
+            <div class="grp">Built-in Presets</div>
+            <div class="preset-cat-chips">
+              <button class="preset-cat-chip on" data-cat="printer">Printer</button>
+              <button class="preset-cat-chip" data-cat="garment">Garment</button>
+              <button class="preset-cat-chip" data-cat="style">Style</button>
+            </div>
+            <div id="builtinList"></div>
+          </div>
+          <div class="sec">
+            <div class="grp">My Presets</div>
+            <input type="text" id="presetNameInput" placeholder="Name this preset" />
+            <div class="actions"><button class="btn" id="saveUserPreset">Save current settings</button></div>
+            <div id="userPresetList"><p class="hint">No saved presets yet.</p></div>
+          </div>
+        </div>
+
+        <div class="pane" id="p15">
+          <div class="sec">
+            <div class="grp">Imaging Pipeline Diagnostics</div>
+            <p class="hint">
+              Runs 4 isolated tests against the real imaging API in your Photoshop: a trivial write, an identity
+              read/write, a single-pixel modify, then the real halftone algorithm at small scale. Stops at the first
+              failure. Copy the full log below to share.
+            </p>
+            <div class="actions"><button class="btn primary" id="runDiagnostics">Run all diagnostic tests</button></div>
+          </div>
+          <div class="sec">
+            <div class="grp">Log</div>
+            <pre id="diagLog" class="diag-log">Tap "Run all diagnostic tests" above.</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="bar hide" id="applyBar">
+        <button class="bar-reset" id="resetAll">Reset</button>
+        <button class="bar-apply" id="applyVintage">Apply</button>
+      </div>
+
+      <div class="foot">
+        <div class="msg" id="status"><span id="statusText">Photoneshop ready</span></div>
+        <div class="foot-tools">
+          <span class="cov">Ink <strong id="coverageVal">—</strong></span>
+          <button class="mini" id="soloGroup">Solo</button>
+          <button class="mini" id="undoLast">Undo</button>
+        </div>
       </div>
     </div>
-    <p class="hint" id="fixHint">Run analysis first — fixes activate based on what your artwork needs.</p>
-  </div>
-</div>
-
-<!-- DEEP ANALYSIS MODAL -->
-<div class="modal-overlay hide" id="deepModal">
-  <div class="modal-card">
-    <div class="modal-head">
-      <h3>Deep Analysis</h3>
-      <button class="modal-close" id="deepClose">&times;</button>
-    </div>
-    <div class="modal-body" id="deepBody">
-      <p class="hint">Scans your artwork at high resolution — far deeper than the quick check — to recommend the best halftone settings, colour profile, and flag pixel-level issues a quick scan would miss.</p>
-    </div>
-  </div>
-</div>
-
-<div class="pane" id="p2">
-  <div class="sec">
-    <div class="grp">Threshold</div>
-    <div class="s"><div class="s-row"><label>Level</label><span class="s-val" id="threshV">128</span></div><div class="s-track"><div class="s-fill" id="threshF"></div><input type="range" id="thresh" min="0" max="255" value="128"></div></div>
-    <div class="actions"><button class="btn" id="autoAnalyse">Auto-detect optimal threshold</button></div>
-  </div>
-  <div class="sec">
-    <div class="grp">Tone</div>
-    <div class="s"><div class="s-row"><label>Exposure</label><span class="s-val" id="exposureV">0</span></div><div class="s-track"><div class="s-fill" id="exposureF"></div><input type="range" id="exposure" min="-100" max="100" value="0"></div></div>
-    <div class="s"><div class="s-row"><label>Highlights</label><span class="s-val" id="highlightV">0</span></div><div class="s-track"><div class="s-fill" id="highlightF"></div><input type="range" id="highlight" min="0" max="100" value="0"></div></div>
-    <div class="s"><div class="s-row"><label>Shadow Lift</label><span class="s-val" id="shadowV">0</span></div><div class="s-track"><div class="s-fill" id="shadowF"></div><input type="range" id="shadow" min="0" max="100" value="0"></div></div>
-    <div class="s"><div class="s-row"><label>Brightness</label><span class="s-val" id="brightV">0</span></div><div class="s-track"><div class="s-fill" id="brightF"></div><input type="range" id="bright" min="-100" max="100" value="0"></div></div>
-    <div class="s"><div class="s-row"><label>Contrast</label><span class="s-val" id="contrastV">0</span></div><div class="s-track"><div class="s-fill" id="contrastF"></div><input type="range" id="contrast" min="-100" max="100" value="0"></div></div>
-    <div class="s"><div class="s-row"><label>Blur</label><span class="s-val" id="blurV">0</span></div><div class="s-track"><div class="s-fill" id="blurF"></div><input type="range" id="blur" min="0" max="100" value="0"></div></div>
-  </div>
-  <div class="sec">
-    <div class="grp">Vintage</div>
-    <div class="s"><div class="s-row"><label>Fade</label><span class="s-val" id="fadeV">0</span></div><div class="s-track"><div class="s-fill" id="fadeF"></div><input type="range" id="fade" min="0" max="100" value="0"></div></div>
-    <div class="s"><div class="s-row"><label>Distress</label><span class="s-val" id="distressV">0</span></div><div class="s-track"><div class="s-fill" id="distressF"></div><input type="range" id="distress" min="0" max="100" value="0"></div></div>
-    <div class="s"><div class="s-row"><label>Ink Bleed</label><span class="s-val" id="bleedV">0</span></div><div class="s-track"><div class="s-fill" id="bleedF"></div><input type="range" id="bleed" min="0" max="30" value="0"></div></div>
-    <div class="s"><div class="s-row"><label>Grain</label><span class="s-val" id="grainV">0</span></div><div class="s-track"><div class="s-fill" id="grainF"></div><input type="range" id="grain" min="0" max="100" value="0"></div></div>
-    <div class="s"><div class="s-row"><label>Effect</label></div><select id="effect"><option value="none">No effect</option><option value="photocopy">Photocopy</option><option value="newspaper">Newspaper</option></select></div>
-  </div>
-</div>
-
-<div class="pane" id="p3">
-  <div class="sec">
-    <div class="grp">Settings</div>
-    <div class="s"><div class="s-row"><label>LPI (frequency)</label><span class="s-val" id="lpiV">45</span></div><div class="s-track"><div class="s-fill" id="lpiF"></div><input type="range" id="lpi" min="20" max="100" value="45"></div></div>
-    <div class="s"><div class="s-row"><label>Angle</label><span class="s-val" id="htAngleV">45</span></div><div class="s-track"><div class="s-fill" id="htAngleF"></div><input type="range" id="htAngle" min="0" max="90" value="45" step="15"></div></div>
-    <div class="s"><div class="s-row"><label>Dot Size</label><span class="s-val" id="htSizeV">8</span></div><div class="s-track"><div class="s-fill" id="htSizeF"></div><input type="range" id="htSize" min="4" max="30" value="8"></div></div>
-    <div class="s"><div class="s-row"><label>Dot Gain</label><span class="s-val" id="dotGainV">0</span></div><div class="s-track"><div class="s-fill" id="dotGainF"></div><input type="range" id="dotGain" min="0" max="40" value="0"></div></div>
-    <div class="s"><div class="s-row"><label>Amount</label><span class="s-val" id="halftoneV">100</span></div><div class="s-track"><div class="s-fill" id="halftoneF"></div><input type="range" id="halftone" min="0" max="100" value="100"></div></div>
-    <div class="channel-row" style="margin-top:2px;"><input type="color" id="htColor" value="#000000"><span>Ink Colour</span></div>
-  </div>
-  <div class="actions"><button class="btn primary" id="applyHalftone">Apply halftone</button></div>
-</div>
-
-<div class="pane" id="p4">
-  <div class="sec">
-    <div class="grp">Target Colour Count</div>
-    <div class="chips" id="colorChips">
-      <button class="chip" data-colors="2">2</button><button class="chip" data-colors="3">3</button>
-      <button class="chip on" data-colors="4">4</button><button class="chip" data-colors="6">6</button>
-      <button class="chip" data-colors="8">8</button><button class="chip" data-colors="10">10</button>
-    </div>
-    <p class="hint">Creates one real, named, coloured layer per detected colour — not a flattened raster.</p>
-  </div>
-  <div class="actions">
-    <button class="btn primary" id="reduceColors">Split into colour layers</button>
-    <button class="btn" id="exportSpots">Export spot channels + PNG</button>
-  </div>
-  <div class="sec" id="channelEditor"></div>
-</div>
-
-<div class="pane" id="p5">
-  <div class="sec">
-    <div class="grp">Type</div>
-    <div class="chips" id="sepChips">
-      <button class="chip on" data-sep="spot">Spot</button>
-      <button class="chip" data-sep="cmyk">CMYK</button>
-      <button class="chip" data-sep="simprocess">Sim Process</button>
-    </div>
-  </div>
-  <div class="sec" id="sepColorCountSec">
-    <div class="grp">Colour Count</div>
-    <div class="chips" id="sepColorChips">
-      <button class="chip" data-sepcolors="2">2</button><button class="chip" data-sepcolors="3">3</button>
-      <button class="chip on" data-sepcolors="4">4</button><button class="chip" data-sepcolors="6">6</button>
-      <button class="chip" data-sepcolors="8">8</button>
-    </div>
-  </div>
-  <div class="sec">
-    <div class="grp">Auto Options</div>
-    <label class="tog"><input type="checkbox" id="sepAutoHalftone" checked><span>Auto-halftone each channel (rotated angles)</span></label>
-    <label class="tog"><input type="checkbox" id="sepRegMarks" checked><span>Add registration marks</span></label>
-    <div class="s"><div class="s-row"><label>Choke</label><span class="s-val" id="sepChokeV">0</span></div><div class="s-track"><div class="s-fill" id="sepChokeF"></div><input type="range" id="sepChoke" min="0" max="20" value="0"></div></div>
-  </div>
-  <div class="actions"><button class="btn primary" id="autoSeparate">Auto separate</button></div>
-  <div class="sec">
-    <div class="grp">Quick Tools</div>
-    <div class="actions">
-      <button class="btn" id="shiftColors">Cycle colour palette</button>
-      <button class="btn" id="applyKnockout">Apply ink-saving knockout</button>
-    </div>
-  </div>
-  <div class="stub-note"><strong>Full Separation Engine</strong>Auto Separate above covers spot / CMYK / simulated-process channel splitting, per-channel halftone at rotated screen angles, choke, and registration marks. Advanced spread and vector crop marks are still planned.</div>
-</div>
-
-<div class="pane" id="p6">
-  <div class="sec">
-    <div class="grp">Underbase</div>
-    <div class="s"><div class="s-row"><label>White Density</label><span class="s-val" id="wDensityV">100</span></div><div class="s-track"><div class="s-fill" id="wDensityF"></div><input type="range" id="wDensity" min="50" max="100" value="100"></div></div>
-    <div class="s"><div class="s-row"><label>Choke</label><span class="s-val" id="wChokeV">0</span></div><div class="s-track"><div class="s-fill" id="wChokeF"></div><input type="range" id="wChoke" min="0" max="20" value="0"></div></div>
-    <div class="s"><div class="s-row"><label>Feather</label><span class="s-val" id="wFeatherV">0</span></div><div class="s-track"><div class="s-fill" id="wFeatherF"></div><input type="range" id="wFeather" min="0" max="20" value="0"></div></div>
-    <div class="s"><div class="s-row"><label>Highlight Boost</label><span class="s-val" id="wHlV">0</span></div><div class="s-track"><div class="s-fill" id="wHlF"></div><input type="range" id="wHl" min="0" max="100" value="0"></div></div>
-  </div>
-  <div class="actions"><button class="btn primary" id="generateUnderbase">Generate white underbase</button></div>
-</div>
-
-<div class="pane" id="p7">
-  <div class="sec">
-    <div class="actions">
-      <button class="btn" id="removeStray">Remove isolated pixels</button>
-      <button class="btn" id="removeHalos">Remove white halos</button>
-      <button class="btn" id="removeJpeg">Fix JPEG artefacts</button>
-      <button class="btn" id="fixAI">Fix AI-generated artwork</button>
-      <button class="btn" id="smoothEdges">Smooth jagged edges</button>
-      <button class="btn" id="autoSharpen">Auto sharpen</button>
-    </div>
-    <p class="hint">Each fix creates a new layer in the Cleanup group. Original untouched.</p>
-  </div>
-</div>
-
-<div class="pane" id="p8">
-  <div class="sec">
-    <div class="grp">Fabric</div>
-    <div class="chips" id="garmentChips">
-      <button class="chip on" data-garment="white">White</button><button class="chip" data-garment="black">Black</button>
-      <button class="chip" data-garment="heather">Heather</button><button class="chip" data-garment="navy">Navy</button>
-      <button class="chip" data-garment="grey">Grey</button><button class="chip" data-garment="coloured">Colour</button>
-    </div>
-  </div>
-  <label class="tog"><input type="checkbox" id="autoUnderbase" checked><span>Auto white underbase on dark garments</span></label>
-  <div class="actions"><button class="btn primary" id="applyGarment">Optimise for garment</button></div>
-</div>
-
-<div class="pane" id="p9">
-  <div class="sec">
-    <div class="grp">Printer</div>
-    <div class="chips" id="dtgChips">
-      <button class="chip on" data-dtg="epson">Epson</button><button class="chip" data-dtg="brother">Brother</button>
-      <button class="chip" data-dtg="kornit">Kornit</button><button class="chip" data-dtg="other">Other</button>
-    </div>
-  </div>
-  <div class="sec">
-    <div class="s"><div class="s-row"><label>Ink Reduction</label><span class="s-val" id="dtgInkV">0</span></div><div class="s-track"><div class="s-fill" id="dtgInkF"></div><input type="range" id="dtgInk" min="0" max="40" value="0"></div></div>
-    <div class="s"><div class="s-row"><label>White Boost</label><span class="s-val" id="dtgWhiteV">0</span></div><div class="s-track"><div class="s-fill" id="dtgWhiteF"></div><input type="range" id="dtgWhite" min="0" max="40" value="0"></div></div>
-    <div class="s"><div class="s-row"><label>Detail Preserve</label><span class="s-val" id="dtgDetailV">0</span></div><div class="s-track"><div class="s-fill" id="dtgDetailF"></div><input type="range" id="dtgDetail" min="0" max="100" value="0"></div></div>
-  </div>
-  <div class="actions"><button class="btn primary" id="applyDTG">Apply DTG optimisation</button></div>
-</div>
-
-<div class="pane" id="p10">
-  <div class="sec">
-    <div class="grp">Film Type</div>
-    <div class="chips" id="dtfChips">
-      <button class="chip on" data-dtf="standard">Standard</button><button class="chip" data-dtf="matte">Matte</button>
-      <button class="chip" data-dtf="soft">Soft Feel</button><button class="chip" data-dtf="stretch">Stretch</button>
-    </div>
-  </div>
-  <div class="sec">
-    <div class="s"><div class="s-row"><label>Colour Boost</label><span class="s-val" id="dtfColV">0</span></div><div class="s-track"><div class="s-fill" id="dtfColF"></div><input type="range" id="dtfCol" min="0" max="40" value="0"></div></div>
-    <div class="s"><div class="s-row"><label>Ink Reduction</label><span class="s-val" id="dtfInkV">0</span></div><div class="s-track"><div class="s-fill" id="dtfInkF"></div><input type="range" id="dtfInk" min="0" max="40" value="0"></div></div>
-    <div class="s"><div class="s-row"><label>Sharpening</label><span class="s-val" id="dtfSharpV">0</span></div><div class="s-track"><div class="s-fill" id="dtfSharpF"></div><input type="range" id="dtfSharp" min="0" max="100" value="0"></div></div>
-  </div>
-  <div class="actions"><button class="btn primary" id="applyDTF">Apply DTF optimisation</button></div>
-</div>
-
-<div class="pane" id="p11">
-  <div class="sec">
-    <div class="grp">Garment Colour</div>
-    <div class="chips" id="previewGarmentChips">
-      <button class="chip on" data-prevgarment="white">White</button><button class="chip" data-prevgarment="black">Black</button>
-      <button class="chip" data-prevgarment="heather">Heather</button><button class="chip" data-prevgarment="navy">Navy</button>
-      <button class="chip" data-prevgarment="red">Red</button><button class="chip" data-prevgarment="sand">Sand</button>
-    </div>
-  </div>
-  <div class="stub-note"><strong>Garment Preview Simulator</strong>Realistic fabric simulation with ink soak, garment colour, and method-specific rendering coming next phase.</div>
-</div>
-
-<div class="pane" id="p12">
-  <div class="prod-score-card">
-    <div class="prod-score" id="prodScore">—</div>
-    <div class="prod-label">Printability Score</div>
-    <div class="prod-detail" id="prodDetail">Run check to see results.</div>
-  </div>
-  <div class="actions"><button class="btn primary" id="runProduction">Run production check</button></div>
-</div>
-
-<div class="pane" id="p13">
-  <div class="sec">
-    <div class="grp">Screen Print</div>
-    <div class="actions"><button class="btn" id="exportScreen">Export B&amp;W screens + registration</button></div>
-  </div>
-  <div class="sec">
-    <div class="grp">DTG</div>
-    <div class="actions"><button class="btn" id="exportDTG">Export flat alpha PNG</button></div>
-  </div>
-  <div class="sec">
-    <div class="grp">DTF</div>
-    <div class="actions"><button class="btn" id="exportDTF">Export DTF-ready PNG</button></div>
-  </div>
-</div>
-
-<div class="pane" id="p14">
-  <div class="sec">
-    <div class="grp">Built-in Presets</div>
-    <div class="preset-cat-chips">
-      <button class="preset-cat-chip on" data-cat="printer">Printer</button>
-      <button class="preset-cat-chip" data-cat="garment">Garment</button>
-      <button class="preset-cat-chip" data-cat="style">Style</button>
-    </div>
-    <div id="builtinList"></div>
-  </div>
-  <div class="sec">
-    <div class="grp">My Presets</div>
-    <input type="text" id="presetNameInput" placeholder="Name this preset">
-    <div class="actions"><button class="btn" id="saveUserPreset">Save current settings</button></div>
-    <div id="userPresetList"><p class="hint">No saved presets yet.</p></div>
-  </div>
-</div>
-
-<div class="pane" id="p15">
-  <div class="sec">
-    <div class="grp">Imaging Pipeline Diagnostics</div>
-    <p class="hint">Runs 4 isolated tests against the real imaging API in your Photoshop: a trivial write, an identity read/write, a single-pixel modify, then the real halftone algorithm at small scale. Stops at the first failure. Copy the full log below to share.</p>
-    <div class="actions"><button class="btn primary" id="runDiagnostics">Run all diagnostic tests</button></div>
-  </div>
-  <div class="sec">
-    <div class="grp">Log</div>
-    <pre id="diagLog" class="diag-log">Tap "Run all diagnostic tests" above.</pre>
-  </div>
-</div>
-
-</div>
-
-<div class="bar hide" id="applyBar">
-  <button class="bar-reset" id="resetAll">Reset</button>
-  <button class="bar-apply" id="applyVintage">Apply</button>
-</div>
-
-<div class="foot">
-  <div class="msg" id="status"><span id="statusText">Photoneshop ready</span></div>
-  <div class="foot-tools">
-    <span class="cov">Ink <strong id="coverageVal">—</strong></span>
-    <button class="mini" id="soloGroup">Solo</button>
-    <button class="mini" id="undoLast">Undo</button>
-  </div>
-</div>
-
-</div>
-<script src="core/memory.js"></script>
-<script src="core/errors.js"></script>
-<script src="core/validation.js"></script>
-<script src="core/benchmark.js"></script>
-<script src="core/api.js"></script>
-<script src="core/preview.js"></script>
-<script src="core/history.js"></script>
-<script src="core/diagnostics.js"></script>
-<script src="engines/vintage.js"></script>
-<script src="engines/halftone.js"></script>
-<script src="engines/halftone-tiled.js"></script>
-<script src="engines/cleanup.js"></script>
-<script src="engines/print.js"></script>
-<script src="engines/separation.js"></script>
-<script src="ai/analysis.js"></script>
-<script src="presets/index.js"></script>
-<script src="ui/panels.js"></script>
-</body>
+    <script src="core/memory.js"></script>
+    <script src="core/errors.js"></script>
+    <script src="core/validation.js"></script>
+    <script src="core/benchmark.js"></script>
+    <script src="core/api.js"></script>
+    <script src="core/preview.js"></script>
+    <script src="core/history.js"></script>
+    <script src="core/diagnostics.js"></script>
+    <script src="engines/vintage.js"></script>
+    <script src="engines/halftone.js"></script>
+    <script src="engines/halftone-tiled.js"></script>
+    <script src="engines/cleanup.js"></script>
+    <script src="engines/print.js"></script>
+    <script src="engines/separation.js"></script>
+    <script src="ai/analysis.js"></script>
+    <script src="presets/index.js"></script>
+    <script src="ui/panels.js"></script>
+  </body>
 </html>

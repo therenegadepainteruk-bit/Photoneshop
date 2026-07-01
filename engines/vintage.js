@@ -5,10 +5,20 @@
 
 function buildPipeline() {
   const cmds = [];
-  const blur = num("blur"), exposure = num("exposure"), highlight = num("highlight"), shadow = num("shadow");
-  const bright = num("bright"), contrast = num("contrast");
-  const fade = num("fade"), distress = num("distress"), bleed = num("bleed"), grain = num("grain");
-  const halftone = num("halftone"), htSize = num("htSize"), htAngle = num("htAngle"), dotGain = num("dotGain");
+  const blur = num("blur"),
+    exposure = num("exposure"),
+    highlight = num("highlight"),
+    shadow = num("shadow");
+  const bright = num("bright"),
+    contrast = num("contrast");
+  const fade = num("fade"),
+    distress = num("distress"),
+    bleed = num("bleed"),
+    grain = num("grain");
+  const halftone = num("halftone"),
+    htSize = num("htSize"),
+    htAngle = num("htAngle"),
+    dotGain = num("dotGain");
   const effect = val("effect");
   const thresh = parseInt(val("thresh"), 10) || 128;
 
@@ -75,18 +85,28 @@ async function autoDetectThreshold() {
       const total = histo.reduce((a, b) => a + b, 0);
       let sum = 0;
       for (let i = 0; i < 256; i++) sum += i * histo[i];
-      let sumB = 0, wB = 0, max = 0;
+      let sumB = 0,
+        wB = 0,
+        max = 0;
       for (let i = 0; i < 256; i++) {
-        wB += histo[i]; if (!wB) continue;
-        const wF = total - wB; if (!wF) break;
+        wB += histo[i];
+        if (!wB) continue;
+        const wF = total - wB;
+        if (!wF) break;
         sumB += i * histo[i];
-        const mB = sumB / wB, mF = (sum - sumB) / wF;
+        const mB = sumB / wB,
+          mF = (sum - sumB) / wF;
         const between = wB * wF * (mB - mF) * (mB - mF);
-        if (between > max) { max = between; thr = i; }
+        if (between > max) {
+          max = between;
+          thr = i;
+        }
       }
     });
     setSlider("thresh", thr);
     if (hasDoc()) schedulePreview();
     setStatus("Optimal threshold: " + thr, "success");
-  } catch (e) { setStatus("Error: " + e.message, "error"); }
+  } catch (e) {
+    setStatus("Error: " + e.message, "error");
+  }
 }

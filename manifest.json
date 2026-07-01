@@ -39,18 +39,8 @@
           "width": 23,
           "height": 23,
           "path": "icons/icon.png",
-          "scale": [
-            1,
-            2
-          ],
-          "theme": [
-            "darkest",
-            "dark",
-            "medium",
-            "lightest",
-            "light",
-            "all"
-          ]
+          "scale": [1, 2],
+          "theme": ["darkest", "dark", "medium", "lightest", "light", "all"]
         }
       ]
     }
@@ -60,18 +50,8 @@
       "width": 23,
       "height": 23,
       "path": "icons/icon.png",
-      "scale": [
-        1,
-        2
-      ],
-      "theme": [
-        "darkest",
-        "dark",
-        "medium",
-        "lightest",
-        "light",
-        "all"
-      ]
+      "scale": [1, 2],
+      "theme": ["darkest", "dark", "medium", "lightest", "light", "all"]
     }
   ],
   "requiredPermissions": {

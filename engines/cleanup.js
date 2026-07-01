@@ -9,38 +9,38 @@ function bindCleanup(id, cmds, name, msg) {
     try {
       await runNonDestructive(name, cmds, "CleanupFix");
       setStatus(msg + " — new layer in CleanupFix group", "success");
-    } catch (e) { setStatus("Error: " + e.message, "error"); }
+    } catch (e) {
+      setStatus("Error: " + e.message, "error");
+    }
   });
 }
 
 function initCleanup() {
-  bindCleanup("removeStray",
-    [{ _obj: "despeckle" }],
-    "Remove Isolated Pixels",
-    "Isolated pixels removed");
+  bindCleanup("removeStray", [{ _obj: "despeckle" }], "Remove Isolated Pixels", "Isolated pixels removed");
 
-  bindCleanup("removeHalos",
-    [{ _obj: "minimum", radius: { _unit: "pixelsUnit", _value: 1 }, preserveShape: { _enum: "preserveShape", _value: "roundness" } }],
+  bindCleanup(
+    "removeHalos",
+    [
+      {
+        _obj: "minimum",
+        radius: { _unit: "pixelsUnit", _value: 1 },
+        preserveShape: { _enum: "preserveShape", _value: "roundness" },
+      },
+    ],
     "Remove White Halos",
-    "White halos removed");
+    "White halos removed"
+  );
 
-  bindCleanup("removeJpeg",
+  bindCleanup(
+    "removeJpeg",
     [{ _obj: "dustAndScratches", radius: { _unit: "pixelsUnit", _value: 1 }, threshold: 12 }],
     "Fix JPEG Artefacts",
-    "JPEG artefacts reduced");
+    "JPEG artefacts reduced"
+  );
 
-  bindCleanup("fixAI",
-    [{ _obj: "posterization", levels: 12 }, opMedian(1)],
-    "Fix AI Artwork",
-    "AI artwork cleaned");
+  bindCleanup("fixAI", [{ _obj: "posterization", levels: 12 }, opMedian(1)], "Fix AI Artwork", "AI artwork cleaned");
 
-  bindCleanup("smoothEdges",
-    [opGaussian(0.5)],
-    "Smooth Edges",
-    "Edges smoothed");
+  bindCleanup("smoothEdges", [opGaussian(0.5)], "Smooth Edges", "Edges smoothed");
 
-  bindCleanup("autoSharpen",
-    [opUnsharp(80, 1, 2)],
-    "Auto Sharpen",
-    "Sharpened");
+  bindCleanup("autoSharpen", [opUnsharp(80, 1, 2)], "Auto Sharpen", "Sharpened");
 }

@@ -57,15 +57,15 @@ Folder-copy installs do not work; UXP requires sideloading via UDT.
 
 ## Status (honest)
 
-| Area | State |
-|------|-------|
-| Apply halftone (core feature) | **Working**, instrumented, regression-guarded |
-| Large-image path | Verified band-chunked path in `computeHalftoneBufferChunked`; single output allocation, practical ceiling ~100 MP |
-| Tiled renderer (`engines/halftone-tiled.js`) | **Experimental, unwired.** Real tile math is unit-tested; `applyHalftoneTiled` throws (no real pixel I/O yet) |
-| `core/errors.js` safe wrappers (`safeGetPixels`/`safePutPixels`) | Mock placeholders, **not used by any active path** (halftone uses `window.imaging` directly) |
-| Separation tab | Stub (trapping/choke planned) |
-| Garment Preview tab | Stub |
-| UI | 15 tabs |
+| Area                                                             | State                                                                                                             |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Apply halftone (core feature)                                    | **Working**, instrumented, regression-guarded                                                                     |
+| Large-image path                                                 | Verified band-chunked path in `computeHalftoneBufferChunked`; single output allocation, practical ceiling ~100 MP |
+| Tiled renderer (`engines/halftone-tiled.js`)                     | **Experimental, unwired.** Real tile math is unit-tested; `applyHalftoneTiled` throws (no real pixel I/O yet)     |
+| `core/errors.js` safe wrappers (`safeGetPixels`/`safePutPixels`) | Mock placeholders, **not used by any active path** (halftone uses `window.imaging` directly)                      |
+| Separation tab                                                   | Stub (trapping/choke planned)                                                                                     |
+| Garment Preview tab                                              | Stub                                                                                                              |
+| UI                                                               | 15 tabs                                                                                                           |
 
 See `CHANGELOG.md` and `INTEGRATION-REPORT-v5.2.1.md` for detail.
 

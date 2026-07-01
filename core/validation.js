@@ -12,13 +12,13 @@
  */
 
 const CHECKS = {
-  DOCUMENT_EXISTS: 'documentExists',
-  RGB_MODE: 'rgbMode',
-  LAYER_EXISTS: 'layerExists',
-  LAYER_RASTER: 'layerRaster',
-  LAYER_UNLOCKED: 'layerUnlocked',
-  BIT_DEPTH: 'bitDepth',
-  RAM_AVAILABLE: 'ramAvailable',
+  DOCUMENT_EXISTS: "documentExists",
+  RGB_MODE: "rgbMode",
+  LAYER_EXISTS: "layerExists",
+  LAYER_RASTER: "layerRaster",
+  LAYER_UNLOCKED: "layerUnlocked",
+  BIT_DEPTH: "bitDepth",
+  RAM_AVAILABLE: "ramAvailable",
 };
 
 /**
@@ -28,7 +28,7 @@ function validateDocumentExists(doc) {
   if (!doc) {
     return {
       pass: false,
-      message: 'No active document. Open an image first.',
+      message: "No active document. Open an image first.",
       canAutoFix: false,
     };
   }
@@ -39,19 +39,19 @@ function validateDocumentExists(doc) {
  * Check: Document is RGB (not CMYK, Grayscale, Indexed).
  */
 function validateRGBMode(doc) {
-  if (!doc) return { pass: false, message: 'No document' };
+  if (!doc) return { pass: false, message: "No document" };
 
   // UXP exposes colour mode as doc.mode (e.g. "RGBColorMode"), not doc.colorModel.
   // Fall back to colorModel defensively; normalise to a string.
-  const raw = (doc.mode != null) ? doc.mode : doc.colorModel;
-  const mode = (raw == null ? '' : String(raw));
+  const raw = doc.mode != null ? doc.mode : doc.colorModel;
+  const mode = raw == null ? "" : String(raw);
   const upper = mode.toUpperCase();
 
-  if (upper === '') {
+  if (upper === "") {
     // Mode unreadable — do not raise a false RGB failure (warn-only check).
-    return { pass: true, indeterminate: true, message: 'Could not read document colour mode' };
+    return { pass: true, indeterminate: true, message: "Could not read document colour mode" };
   }
-  if (upper.indexOf('RGB') !== -1) {
+  if (upper.indexOf("RGB") !== -1) {
     return { pass: true };
   }
 
@@ -59,10 +59,10 @@ function validateRGBMode(doc) {
     pass: false,
     message: `Document is in ${mode} mode. Photoneshop requires RGB.`,
     canAutoFix: true,
-    fixSuggestion: 'Image > Mode > RGB',
+    fixSuggestion: "Image > Mode > RGB",
     fixAction: async () => {
       // TODO: Auto-convert via batchPlay
-      console.log('Would convert to RGB via Image > Mode > RGB');
+      console.log("Would convert to RGB via Image > Mode > RGB");
       return true;
     },
   };
@@ -75,7 +75,7 @@ function validateLayerExists(layer) {
   if (!layer) {
     return {
       pass: false,
-      message: 'No active layer. Select a layer first.',
+      message: "No active layer. Select a layer first.",
       canAutoFix: false,
     };
   }
@@ -86,10 +86,10 @@ function validateLayerExists(layer) {
  * Check: Layer is raster (not smart object, group, text, etc).
  */
 function validateLayerIsRaster(layer) {
-  if (!layer) return { pass: false, message: 'No layer' };
+  if (!layer) return { pass: false, message: "No layer" };
 
   const kind = layer.kind;
-  const isRaster = kind === 'pixel' || kind === 'rasterLayer' || !kind;
+  const isRaster = kind === "pixel" || kind === "rasterLayer" || !kind;
 
   if (isRaster) {
     return { pass: true };
@@ -98,8 +98,8 @@ function validateLayerIsRaster(layer) {
   return {
     pass: false,
     message: `Layer is ${kind}. Photoneshop requires a raster layer.`,
-    canAutoFix: kind === 'smartObject',
-    fixSuggestion: 'Right-click > Rasterize Layer',
+    canAutoFix: kind === "smartObject",
+    fixSuggestion: "Right-click > Rasterize Layer",
   };
 }
 
@@ -107,7 +107,7 @@ function validateLayerIsRaster(layer) {
  * Check: Layer is not locked.
  */
 function validateLayerUnlocked(layer) {
-  if (!layer) return { pass: false, message: 'No layer' };
+  if (!layer) return { pass: false, message: "No layer" };
 
   const flags = layer.flags || {};
   const isLocked = flags.locked || flags.pixelsLocked;
@@ -118,12 +118,12 @@ function validateLayerUnlocked(layer) {
 
   return {
     pass: false,
-    message: 'Layer is locked. Unlock the layer before operating.',
+    message: "Layer is locked. Unlock the layer before operating.",
     canAutoFix: true,
-    fixSuggestion: 'Layer > Layer > Unlock Layer (or click lock icon)',
+    fixSuggestion: "Layer > Layer > Unlock Layer (or click lock icon)",
     fixAction: async () => {
       // TODO: Use batchPlay to unlock layer
-      console.log('Would unlock layer');
+      console.log("Would unlock layer");
       return true;
     },
   };
@@ -133,7 +133,7 @@ function validateLayerUnlocked(layer) {
  * Check: Document is 8-bit or 16-bit (not 32-bit float, not 1-bit).
  */
 function validateBitDepth(doc) {
-  if (!doc) return { pass: false, message: 'No document' };
+  if (!doc) return { pass: false, message: "No document" };
 
   const bits = doc.bitsPerChannel;
   if (bits === 8 || bits === 16) {
@@ -144,7 +144,7 @@ function validateBitDepth(doc) {
     pass: false,
     message: `Image is ${bits}-bit. Photoneshop requires 8-bit or 16-bit color.`,
     canAutoFix: bits === 32,
-    fixSuggestion: 'Image > Mode > 16 Bit (or 8 Bit)',
+    fixSuggestion: "Image > Mode > 16 Bit (or 8 Bit)",
   };
 }
 
@@ -155,7 +155,7 @@ function validateBitDepth(doc) {
 function validateRAMAvailable(estimatedNeedMB = 100) {
   let availableMB = 250; // Default fallback
 
-  if (typeof window !== 'undefined' && window.PhotoneshopMemory) {
+  if (typeof window !== "undefined" && window.PhotoneshopMemory) {
     availableMB = window.PhotoneshopMemory.estimateAvailableRAM();
   }
 
@@ -169,7 +169,7 @@ function validateRAMAvailable(estimatedNeedMB = 100) {
     pass: false,
     message: `Insufficient RAM. Need ${Math.round(safeThreshold)}MB, have ${Math.round(availableMB)}MB.`,
     canAutoFix: false,
-    fixSuggestion: 'Close other apps or reduce image size.',
+    fixSuggestion: "Close other apps or reduce image size.",
     availableMB,
     neededMB: safeThreshold,
   };
@@ -190,7 +190,7 @@ function runAllChecks(doc, layer, estimatedNeedMB = 100) {
     [CHECKS.RAM_AVAILABLE]: validateRAMAvailable(estimatedNeedMB),
   };
 
-  const allPass = Object.values(results).every(r => r.pass !== false);
+  const allPass = Object.values(results).every((r) => r.pass !== false);
 
   return { allPass, results };
 }
@@ -212,10 +212,10 @@ function getFirstFailure(results) {
  */
 function formatValidationReport(allPass, results) {
   if (allPass) {
-    return '✅ All pre-flight checks passed.';
+    return "✅ All pre-flight checks passed.";
   }
 
-  let report = '❌ Validation failed:\n\n';
+  let report = "❌ Validation failed:\n\n";
   for (const [checkName, result] of Object.entries(results)) {
     if (result.pass === false) {
       report += `• ${result.message}\n`;
@@ -229,7 +229,7 @@ function formatValidationReport(allPass, results) {
 }
 
 // Export
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   window.PhotoneshopValidation = {
     CHECKS,
     validateDocumentExists,

@@ -9,8 +9,8 @@
  */
 
 const MEMORY_POOL_SIZES = [
-  [256, 256, 4],   // 256 KB — common tile size
-  [512, 512, 4],   // 1 MB
+  [256, 256, 4], // 256 KB — common tile size
+  [512, 512, 4], // 1 MB
   [1024, 1024, 4], // 4 MB
 ];
 
@@ -47,7 +47,8 @@ function allocateBuffer(width, height, depth, context = "buffer") {
   const safeThreshold = sizeMB * 1.5; // GC + overhead
 
   if (availableRAM < safeThreshold) {
-    const errorMsg = `allocateBuffer failed for ${context}: ` +
+    const errorMsg =
+      `allocateBuffer failed for ${context}: ` +
       `need ${Math.round(safeThreshold)}MB, available ${Math.round(availableRAM)}MB. ` +
       `Try: reduce image size, close other apps, or split into tiles.`;
     throw new Error(errorMsg);
@@ -72,7 +73,8 @@ function allocateBuffer(width, height, depth, context = "buffer") {
     if (currentMemoryMB > peakMemoryMB) peakMemoryMB = currentMemoryMB;
     return buf;
   } catch (e) {
-    const errorMsg = `allocateBuffer: ${context} failed (${width}×${height}×${depth}). ` +
+    const errorMsg =
+      `allocateBuffer: ${context} failed (${width}×${height}×${depth}). ` +
       `Allocation attempted: ${Math.round(sizeMB)}MB. ` +
       `Error: ${e.message}. ` +
       `Mitigation: switch to tiled renderer or reduce preview resolution.`;
@@ -88,7 +90,7 @@ function releaseBuffer(buffer, width, height, depth) {
   const sizeMB = (width * height * depth) / (1024 * 1024);
   const key = `${width}x${height}x${depth}`;
 
-  if (MEMORY_POOL_SIZES.some(s => s[0] === width && s[1] === height && s[2] === depth)) {
+  if (MEMORY_POOL_SIZES.some((s) => s[0] === width && s[1] === height && s[2] === depth)) {
     // Pooled size — return to pool
     initPoolIfNeeded(width, height, depth);
     if (pools[key].length < 3) {
@@ -123,7 +125,7 @@ function getMemoryStats() {
     currentMemoryMB: Math.round(currentMemoryMB * 100) / 100,
     peakMemoryMB: Math.round(peakMemoryMB * 100) / 100,
     availableRAM: Math.round(estimateAvailableRAM() * 100) / 100,
-    pooledBuffers: Object.keys(pools).map(k => ({
+    pooledBuffers: Object.keys(pools).map((k) => ({
       size: k,
       count: pools[k].length,
     })),
@@ -147,7 +149,7 @@ function resetPeakMemory() {
   peakMemoryMB = 0;
 }
 
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   window.PhotoneshopMemory = {
     allocateBuffer,
     releaseBuffer,

@@ -13,7 +13,7 @@
  */
 
 const TILE_SIZE = 256; // 256×256 = 64KB tile (256×256×4 bytes)
-const OVERLAP = 16;    // Pixel overlap between tiles to hide artifacts
+const OVERLAP = 16; // Pixel overlap between tiles to hide artifacts
 
 /**
  * Compute halftone for a single tile with overlap.
@@ -42,8 +42,9 @@ function computeHalftoneTile(srcBuf, srcWidth, srcHeight, srcDepth, tileX, tileY
   // Allocate tile buffer (not full image)
   const tilePixels = new Uint8Array(w * h * 4);
   const cellSize = Math.max(1.5, (dpi || 300) / lpi);
-  const rad = angle * Math.PI / 180;
-  const cos = Math.cos(rad), sin = Math.sin(rad);
+  const rad = (angle * Math.PI) / 180;
+  const cos = Math.cos(rad),
+    sin = Math.sin(rad);
   const gain = (dotGain || 0) / 100;
   const maxRFactor = (1 - gain * 0.5) * 1.25;
 
@@ -57,12 +58,12 @@ function computeHalftoneTile(srcBuf, srcWidth, srcHeight, srcDepth, tileX, tileY
       const a = srcDepth >= 4 ? srcBuf[srcIdx + 3] : 255;
       if (a < 10) continue;
 
-      const tone = srcDepth >= 3
-        ? Math.round((srcBuf[srcIdx] + srcBuf[srcIdx + 1] + srcBuf[srcIdx + 2]) / 3)
-        : srcBuf[srcIdx];
+      const tone =
+        srcDepth >= 3 ? Math.round((srcBuf[srcIdx] + srcBuf[srcIdx + 1] + srcBuf[srcIdx + 2]) / 3) : srcBuf[srcIdx];
 
       // Find nearest screen cell for this pixel
-      const rx = x * cos + y * sin, ry = -x * sin + y * cos;
+      const rx = x * cos + y * sin,
+        ry = -x * sin + y * cos;
       const cellX = Math.floor(rx / cellSize);
       const cellY = Math.floor(ry / cellSize);
       const ccRX = (cellX + 0.5) * cellSize;
@@ -84,7 +85,8 @@ function computeHalftoneTile(srcBuf, srcWidth, srcHeight, srcDepth, tileX, tileY
         for (let xx = x0d; xx < x1d; xx++) {
           const rxx = xx * cos + yy * sin;
           const ryy = -xx * sin + yy * cos;
-          const dx = rxx - ccRX, dy = ryy - ccRY;
+          const dx = rxx - ccRX,
+            dy = ryy - ccRY;
 
           if (dx * dx + dy * dy <= dotR2) {
             const tileIdx = ((yy - y0) * w + (xx - x0)) * 4;
@@ -133,7 +135,7 @@ async function tiledHalftoneRender(srcBuf, srcDepth, width, height, params, onPr
         const tile = computeHalftoneTile(srcBuf, width, height, srcDepth, tx, ty, params);
         tiles.push(tile);
 
-        const progress = Math.round((tileIdx + 1) / totalTiles * 100);
+        const progress = Math.round(((tileIdx + 1) / totalTiles) * 100);
         onProgress(tileIdx + 1, totalTiles, progress);
       } catch (e) {
         console.error(`Tile [${tx}, ${ty}] failed:`, e);
@@ -142,7 +144,7 @@ async function tiledHalftoneRender(srcBuf, srcDepth, width, height, params, onPr
       }
 
       // Yield to event loop (prevents "unresponsive plugin" crash)
-      await new Promise(r => setTimeout(r, 0));
+      await new Promise((r) => setTimeout(r, 0));
     }
   }
 
@@ -172,13 +174,13 @@ async function tiledHalftoneRender(srcBuf, srcDepth, width, height, params, onPr
 async function applyHalftoneTiled(layer, params, onProgress = () => {}) {
   throw new Error(
     "halftone-tiled: applyHalftoneTiled is experimental and not implemented " +
-    "(no real pixel read/write). Use the standard Apply-halftone path " +
-    "(engines/halftone.js → writeHalftoneFinal). See file header."
+      "(no real pixel read/write). Use the standard Apply-halftone path " +
+      "(engines/halftone.js → writeHalftoneFinal). See file header."
   );
 }
 
 // Export
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   window.PhotoneshopHalftoneTiled = {
     tiledHalftoneRender,
     applyHalftoneTiled,

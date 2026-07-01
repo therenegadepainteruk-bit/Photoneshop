@@ -8,12 +8,12 @@ const _ps = require("photoshop");
 const _uxp = require("uxp");
 
 // ---- explicit window globals (safe across all script files) ----
-window.app      = _ps.app;
-window.core     = _ps.core;
-window.action   = _ps.action;
-window.imaging  = _ps.imaging;
+window.app = _ps.app;
+window.core = _ps.core;
+window.action = _ps.action;
+window.imaging = _ps.imaging;
 window.batchPlay = _ps.action.batchPlay;
-window.fs       = _uxp.storage.localFileSystem;
+window.fs = _uxp.storage.localFileSystem;
 
 // Register panel entrypoint (required pattern for apiVersion 2 manifests).
 // Our HTML/JS already self-initializes on DOMContentLoaded, so show() is a no-op —
@@ -22,15 +22,21 @@ try {
   _uxp.entrypoints.setup({
     panels: {
       "photoneshop.panel": {
-        show() {}
-      }
-    }
+        show() {},
+      },
+    },
   });
-} catch (e) { /* older API versions don't require this — safe to ignore */ }
+} catch (e) {
+  /* older API versions don't require this — safe to ignore */
+}
 
 // ---- base helpers ----
-function hasDoc()  { return window.app.documents.length > 0; }
-function getDoc()  { return window.app.activeDocument; }
+function hasDoc() {
+  return window.app.documents.length > 0;
+}
+function getDoc() {
+  return window.app.activeDocument;
+}
 
 async function modal(name, fn) {
   return window.core.executeAsModal(fn, { commandName: name });
@@ -63,11 +69,17 @@ function setStatus(msg, type) {
   if (!s || !t) return;
   s.className = "msg show " + type;
   t.textContent = msg;
-  if (type !== "error") setTimeout(function() { s.classList.remove("show"); }, 3500);
+  if (type !== "error")
+    setTimeout(function () {
+      s.classList.remove("show");
+    }, 3500);
 }
 
 function guard() {
-  if (!hasDoc()) { setStatus("Open an image in Photoshop first", "warning"); return false; }
+  if (!hasDoc()) {
+    setStatus("Open an image in Photoshop first", "warning");
+    return false;
+  }
   // FIX 2.4 (corrected): UXP Photoshop exposes colour mode as doc.mode
   // (e.g. "RGBColorMode"), NOT doc.colorModel. Reading colorModel returned
   // undefined, so this guard previously blocked EVERY tool on real documents —
@@ -76,7 +88,7 @@ function guard() {
   // not RGB (e.g. CMYK/Grayscale/Lab). Pass on RGB or an unreadable mode so we
   // never false-block a valid document.
   const doc = getDoc();
-  const raw = (doc && doc.mode != null) ? doc.mode : (doc ? doc.colorModel : null);
+  const raw = doc && doc.mode != null ? doc.mode : doc ? doc.colorModel : null;
   const mode = (raw == null ? "" : String(raw)).toUpperCase();
   if (mode !== "" && mode.indexOf("RGB") === -1) {
     setStatus("This plugin requires RGB mode. Please convert: Image > Mode > RGB", "warning");
@@ -90,9 +102,17 @@ function bind(id, fn) {
   if (e) e.addEventListener("click", fn);
 }
 
-function val(id)  { var e = document.getElementById(id); return e ? e.value : ""; }
-function num(id)  { return parseFloat(val(id)) || 0; }
-function chk(id)  { var e = document.getElementById(id); return e ? e.checked : false; }
+function val(id) {
+  var e = document.getElementById(id);
+  return e ? e.value : "";
+}
+function num(id) {
+  return parseFloat(val(id)) || 0;
+}
+function chk(id) {
+  var e = document.getElementById(id);
+  return e ? e.checked : false;
+}
 
 // Parses a "#rrggbb" colour input value into {r,g,b} 0-255 ints. Falls back to
 // black on anything malformed (empty string, missing element, bad format).
@@ -105,31 +125,63 @@ function hexToRgb(hex) {
 
 function activeChip(group, attr, def) {
   var a = document.querySelector(group + " .chip.on");
-  return a ? (a.dataset[attr] || a.textContent.trim()) : def;
+  return a ? a.dataset[attr] || a.textContent.trim() : def;
 }
 
 // ---- op builders (used by all engines) ----
-function opBright(b, c)     { return { _obj: "brightnessEvent", brightness: Math.round(b), center: Math.round(c), useLegacy: false }; }
-function opGaussian(px)     { return { _obj: "gaussianBlur", radius: { _unit: "pixelsUnit", _value: px } }; }
-function opMedian(px)       { return { _obj: "median", radius: { _unit: "pixelsUnit", _value: px } }; }
-function opNoise(pct)       { return { _obj: "addNoise", distort: { _enum: "distort", _value: "gaussianDistribution" }, noise: { _unit: "percentUnit", _value: pct }, monochromatic: true }; }
-function opThreshold(lvl)   { return { _obj: "thresholdClassEvent", level: lvl }; }
-function opExposure(e, o, g){ return { _obj: "exposure", exposure: e, offset: o, gammaCorrection: g }; }
-function opHalftone(r, a)   { return { _obj: "colorHalftone", maxRadius: { _unit: "pixelsUnit", _value: r }, screenAngles: [a, a, a, a] }; }
-function opUnsharp(amt, r, thr) { return { _obj: "unsharpMask", amount: { _unit: "percentUnit", _value: amt }, radius: { _unit: "pixelsUnit", _value: r }, threshold: thr }; }
+function opBright(b, c) {
+  return { _obj: "brightnessEvent", brightness: Math.round(b), center: Math.round(c), useLegacy: false };
+}
+function opGaussian(px) {
+  return { _obj: "gaussianBlur", radius: { _unit: "pixelsUnit", _value: px } };
+}
+function opMedian(px) {
+  return { _obj: "median", radius: { _unit: "pixelsUnit", _value: px } };
+}
+function opNoise(pct) {
+  return {
+    _obj: "addNoise",
+    distort: { _enum: "distort", _value: "gaussianDistribution" },
+    noise: { _unit: "percentUnit", _value: pct },
+    monochromatic: true,
+  };
+}
+function opThreshold(lvl) {
+  return { _obj: "thresholdClassEvent", level: lvl };
+}
+function opExposure(e, o, g) {
+  return { _obj: "exposure", exposure: e, offset: o, gammaCorrection: g };
+}
+function opHalftone(r, a) {
+  return { _obj: "colorHalftone", maxRadius: { _unit: "pixelsUnit", _value: r }, screenAngles: [a, a, a, a] };
+}
+function opUnsharp(amt, r, thr) {
+  return {
+    _obj: "unsharpMask",
+    amount: { _unit: "percentUnit", _value: amt },
+    radius: { _unit: "pixelsUnit", _value: r },
+    threshold: thr,
+  };
+}
 
 // ---- write-in-progress flag (FIX 1.2): shared across modules ----
 // Tracks whether a putPixels operation is in flight, preventing race conditions
 let _writeInProgress = false;
-function setWriteInProgress(val) { _writeInProgress = val; }
-function getWriteInProgress() { return _writeInProgress; }
+function setWriteInProgress(val) {
+  _writeInProgress = val;
+}
+function getWriteInProgress() {
+  return _writeInProgress;
+}
 
 // ---- fillSlider: defined here so every subsequent file can use it ----
 function fillSlider(el) {
   if (!el) return;
-  var min = +el.min, max = +el.max, v = +el.value;
+  var min = +el.min,
+    max = +el.max,
+    v = +el.value;
   var f = document.getElementById(el.id + "F");
-  if (f) f.style.width = "calc(" + ((v - min) / (max - min) * 100) + "% - 8px)";
+  if (f) f.style.width = "calc(" + ((v - min) / (max - min)) * 100 + "% - 8px)";
 }
 
 function setSlider(id, value) {

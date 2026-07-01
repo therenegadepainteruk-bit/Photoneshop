@@ -61,11 +61,12 @@ class Benchmark {
       pixelsProcessed: this.pixelsProcessed,
       throughputPixelsPerSec: this.throughput,
       memoryPeakMB: Math.round(this.memoryPeakMB * 100) / 100,
-      gcPausesMS: this.gcPauses.map(p => Math.round(p * 100) / 100),
+      gcPausesMS: this.gcPauses.map((p) => Math.round(p * 100) / 100),
       gcPauseCount: this.gcPauses.length,
-      gcPauseAvgMS: this.gcPauses.length > 0
-        ? Math.round((this.gcPauses.reduce((a, b) => a + b, 0) / this.gcPauses.length) * 100) / 100
-        : 0,
+      gcPauseAvgMS:
+        this.gcPauses.length > 0
+          ? Math.round((this.gcPauses.reduce((a, b) => a + b, 0) / this.gcPauses.length) * 100) / 100
+          : 0,
       error: this.error || null,
       timestamp: new Date().toISOString(),
     };
@@ -105,7 +106,7 @@ function benchmarkFn(fn, name) {
       return fn.apply(this, args);
     }
 
-    const bench = new Benchmark(name || fn.name || 'unknown');
+    const bench = new Benchmark(name || fn.name || "unknown");
     bench.start();
 
     try {
@@ -121,7 +122,7 @@ function benchmarkFn(fn, name) {
       }
 
       // Get memory peak if available
-      if (typeof window !== 'undefined' && window.PhotoneshopMemory) {
+      if (typeof window !== "undefined" && window.PhotoneshopMemory) {
         const stats = window.PhotoneshopMemory.getMemoryStats();
         bench.setMemoryPeak(stats.peakMemoryMB);
       }
@@ -143,16 +144,16 @@ function exportBenchmarks() {
   return {
     recordedAt: new Date().toISOString(),
     count: benchmarks.length,
-    benchmarks: benchmarks.map(b => b.toJSON()),
+    benchmarks: benchmarks.map((b) => b.toJSON()),
     summary: {
       totalDurationMS: benchmarks.reduce((sum, b) => sum + b.duration, 0),
       totalPixelsProcessed: benchmarks.reduce((sum, b) => sum + b.pixelsProcessed, 0),
       avgThroughput: Math.round(
-        benchmarks.filter(b => b.throughput > 0).reduce((sum, b) => sum + b.throughput, 0) /
-        Math.max(1, benchmarks.filter(b => b.throughput > 0).length),
+        benchmarks.filter((b) => b.throughput > 0).reduce((sum, b) => sum + b.throughput, 0) /
+          Math.max(1, benchmarks.filter((b) => b.throughput > 0).length)
       ),
-      peakMemoryMB: Math.max(...benchmarks.map(b => b.memoryPeakMB), 0),
-      errorCount: benchmarks.filter(b => b.error).length,
+      peakMemoryMB: Math.max(...benchmarks.map((b) => b.memoryPeakMB), 0),
+      errorCount: benchmarks.filter((b) => b.error).length,
     },
   };
 }
@@ -181,7 +182,7 @@ function detectRegressions(baseline, current, thresholdPercent = 10) {
         baseDurationMS: base.durationMS,
         currentDurationMS: bench.durationMS,
         regressionPercent: Math.round(durationDelta),
-        severity: durationDelta > 50 ? 'HIGH' : 'MEDIUM',
+        severity: durationDelta > 50 ? "HIGH" : "MEDIUM",
       });
     }
 
@@ -192,7 +193,7 @@ function detectRegressions(baseline, current, thresholdPercent = 10) {
         baseMemoryMB: base.memoryPeakMB,
         currentMemoryMB: bench.memoryPeakMB,
         regressionPercent: Math.round(memoryDelta),
-        severity: memoryDelta > 50 ? 'HIGH' : 'MEDIUM',
+        severity: memoryDelta > 50 ? "HIGH" : "MEDIUM",
       });
     }
   }
@@ -204,17 +205,17 @@ function detectRegressions(baseline, current, thresholdPercent = 10) {
  * Format benchmarks for user display.
  */
 function formatBenchmarks(benchmarks) {
-  const rows = benchmarks.map(b => {
+  const rows = benchmarks.map((b) => {
     const ms = Math.round(b.durationMS * 10) / 10;
     const throughput = b.throughput || 0;
     const memory = Math.round(b.memoryPeakMB * 10) / 10;
     return `${b.name}: ${ms}ms, ${throughput} px/s, ${memory}MB`;
   });
-  return rows.join('\n');
+  return rows.join("\n");
 }
 
 // Export
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   window.PhotoneshopBenchmark = {
     Benchmark,
     startRecording,

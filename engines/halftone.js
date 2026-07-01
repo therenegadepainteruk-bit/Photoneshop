@@ -42,9 +42,9 @@
 // real pixel I/O; large images use the verified band-chunked path in
 // computeHalftoneBufferChunked.
 
-const useErrorContext = () => (typeof window !== "undefined" && window.PhotoneshopErrors) ? true : false;
-const useValidation  = () => (typeof window !== "undefined" && window.PhotoneshopValidation) ? true : false;
-const useBenchmark   = () => (typeof window !== "undefined" && window.PhotoneshopBenchmark) ? true : false;
+const useErrorContext = () => (typeof window !== "undefined" && window.PhotoneshopErrors ? true : false);
+const useValidation = () => (typeof window !== "undefined" && window.PhotoneshopValidation ? true : false);
+const useBenchmark = () => (typeof window !== "undefined" && window.PhotoneshopBenchmark ? true : false);
 
 // Integration entry point bound by applyHalftoneEngine().
 //   layerId   — numeric Photoshop layer id of the freshly stamped layer
@@ -55,12 +55,14 @@ async function applyHalftoneWithArch(layerId, myGen, onProgress) {
   // 1. VALIDATE (warn-only) on the REAL active document + layer.
   if (useValidation()) {
     try {
-      const doc = (typeof window !== "undefined" && window.app) ? window.app.activeDocument : null;
+      const doc = typeof window !== "undefined" && window.app ? window.app.activeDocument : null;
       const layer = doc && doc.activeLayers && doc.activeLayers.length ? doc.activeLayers[0] : null;
       const report = window.PhotoneshopValidation.runAllChecks(doc, layer, 150);
       if (report && report.allPass === false) {
-        console.warn("Halftone validation:",
-          window.PhotoneshopValidation.formatValidationReport(report.allPass, report.results));
+        console.warn(
+          "Halftone validation:",
+          window.PhotoneshopValidation.formatValidationReport(report.allPass, report.results)
+        );
       }
     } catch (e) {
       console.warn("Halftone validation skipped:", e && e.message ? e.message : e);
@@ -68,9 +70,7 @@ async function applyHalftoneWithArch(layerId, myGen, onProgress) {
   }
 
   // 2. BENCHMARK around the REAL render (real Benchmark API: new Benchmark(name).start()).
-  const benchmark = useBenchmark()
-    ? new window.PhotoneshopBenchmark.Benchmark("halftone-apply").start()
-    : null;
+  const benchmark = useBenchmark() ? new window.PhotoneshopBenchmark.Benchmark("halftone-apply").start() : null;
 
   try {
     // 3. RENDER via this module's own verified full-resolution path.
@@ -85,11 +85,16 @@ async function applyHalftoneWithArch(layerId, myGen, onProgress) {
     }
     return variation;
   } catch (err) {
-    if (benchmark) { benchmark.fail(err); }
+    if (benchmark) {
+      benchmark.fail(err);
+    }
     if (useErrorContext()) {
       // Real PhotoneshopError API: new PhotoneshopError(operation, details, cause).
       const ctxErr = new window.PhotoneshopErrors.PhotoneshopError(
-        "halftone-apply", err && err.message ? err.message : String(err), err);
+        "halftone-apply",
+        err && err.message ? err.message : String(err),
+        err
+      );
       console.error("Halftone failed with context:", ctxErr.toString());
       throw ctxErr;
     }
@@ -102,37 +107,54 @@ async function applyHalftoneWithArch(layerId, myGen, onProgress) {
 // the forward reference to writeHalftoneFinal (defined later in the file) is safe.
 if (typeof window !== "undefined") {
   window.PhotoneshopHalftoneIntegrated = {
-    applyHalftone: applyHalftoneWithArch
+    applyHalftone: applyHalftoneWithArch,
   };
 }
-
 
 const LIVE_PREVIEW_CAP = 700; // px, long edge — keeps live dragging near-instant
 
 function computeHalftoneBuffer(srcBuf, comps, w, h, lpi, angleDeg, dotGainPct, dpi, inkR, inkG, inkB) {
   const out = new Uint8Array(w * h * 4); // default alpha 0 = transparent
   const cellSize = Math.max(1.5, (dpi || 300) / lpi);
-  const rad = angleDeg * Math.PI / 180;
-  const cos = Math.cos(rad), sin = Math.sin(rad);
+  const rad = (angleDeg * Math.PI) / 180;
+  const cos = Math.cos(rad),
+    sin = Math.sin(rad);
   const gain = (dotGainPct || 0) / 100;
   const maxRFactor = (1 - gain * 0.5) * 1.25;
 
-  const corners = [[0, 0], [w, 0], [0, h], [w, h]];
-  let minRX = Infinity, maxRX = -Infinity, minRY = Infinity, maxRY = -Infinity;
+  const corners = [
+    [0, 0],
+    [w, 0],
+    [0, h],
+    [w, h],
+  ];
+  let minRX = Infinity,
+    maxRX = -Infinity,
+    minRY = Infinity,
+    maxRY = -Infinity;
   for (let c = 0; c < 4; c++) {
-    const cx = corners[c][0], cy = corners[c][1];
-    const rx = cx * cos + cy * sin, ry = -cx * sin + cy * cos;
-    if (rx < minRX) minRX = rx; if (rx > maxRX) maxRX = rx;
-    if (ry < minRY) minRY = ry; if (ry > maxRY) maxRY = ry;
+    const cx = corners[c][0],
+      cy = corners[c][1];
+    const rx = cx * cos + cy * sin,
+      ry = -cx * sin + cy * cos;
+    if (rx < minRX) minRX = rx;
+    if (rx > maxRX) maxRX = rx;
+    if (ry < minRY) minRY = ry;
+    if (ry > maxRY) maxRY = ry;
   }
-  const cellXStart = Math.floor(minRX / cellSize) - 1, cellXEnd = Math.ceil(maxRX / cellSize) + 1;
-  const cellYStart = Math.floor(minRY / cellSize) - 1, cellYEnd = Math.ceil(maxRY / cellSize) + 1;
+  const cellXStart = Math.floor(minRX / cellSize) - 1,
+    cellXEnd = Math.ceil(maxRX / cellSize) + 1;
+  const cellYStart = Math.floor(minRY / cellSize) - 1,
+    cellYEnd = Math.ceil(maxRY / cellSize) + 1;
 
   for (let cellY = cellYStart; cellY <= cellYEnd; cellY++) {
     for (let cellX = cellXStart; cellX <= cellXEnd; cellX++) {
-      const ccRX = (cellX + 0.5) * cellSize, ccRY = (cellY + 0.5) * cellSize;
-      const origX = ccRX * cos - ccRY * sin, origY = ccRX * sin + ccRY * cos;
-      const oxi = Math.round(origX), oyi = Math.round(origY);
+      const ccRX = (cellX + 0.5) * cellSize,
+        ccRY = (cellY + 0.5) * cellSize;
+      const origX = ccRX * cos - ccRY * sin,
+        origY = ccRX * sin + ccRY * cos;
+      const oxi = Math.round(origX),
+        oyi = Math.round(origY);
       if (oxi < 0 || oxi >= w || oyi < 0 || oyi >= h) continue;
       const p = (oyi * w + oxi) * comps;
       // CRITICAL FIX 1.1: Validate buffer access before reading (prevents out-of-bounds crash)
@@ -145,15 +167,22 @@ function computeHalftoneBuffer(srcBuf, comps, w, h, lpi, angleDeg, dotGainPct, d
       if (dotR <= 0) continue;
       const dotR2 = dotR * dotR;
       const reach = Math.ceil(dotR + 1);
-      const x0 = Math.max(0, oxi - reach), x1 = Math.min(w - 1, oxi + reach);
-      const y0 = Math.max(0, oyi - reach), y1 = Math.min(h - 1, oyi + reach);
+      const x0 = Math.max(0, oxi - reach),
+        x1 = Math.min(w - 1, oxi + reach);
+      const y0 = Math.max(0, oyi - reach),
+        y1 = Math.min(h - 1, oyi + reach);
       for (let y = y0; y <= y1; y++) {
         for (let x = x0; x <= x1; x++) {
-          const rx = x * cos + y * sin, ry = -x * sin + y * cos;
-          const dx = rx - ccRX, dy = ry - ccRY;
+          const rx = x * cos + y * sin,
+            ry = -x * sin + y * cos;
+          const dx = rx - ccRX,
+            dy = ry - ccRY;
           if (dx * dx + dy * dy <= dotR2) {
             const oi = (y * w + x) * 4;
-            out[oi] = inkR; out[oi + 1] = inkG; out[oi + 2] = inkB; out[oi + 3] = 255;
+            out[oi] = inkR;
+            out[oi + 1] = inkG;
+            out[oi + 2] = inkB;
+            out[oi + 3] = 255;
           }
         }
       }
@@ -167,30 +196,39 @@ function computeHalftoneBuffer(srcBuf, comps, w, h, lpi, angleDeg, dotGainPct, d
 // Bands overlap by enough margin to cover any dot's reach across a boundary
 // (verified zero pixel difference vs. a non-chunked pass in isolated testing).
 async function computeHalftoneBufferChunked(srcBuf, comps, w, h, lpi, angleDeg, dotGainPct, dpi, inkR, inkG, inkB) {
-  if (w * h <= 4_000_000) return computeHalftoneBuffer(srcBuf, comps, w, h, lpi, angleDeg, dotGainPct, dpi, inkR, inkG, inkB);
+  if (w * h <= 4_000_000)
+    return computeHalftoneBuffer(srcBuf, comps, w, h, lpi, angleDeg, dotGainPct, dpi, inkR, inkG, inkB);
   const out = new Uint8Array(w * h * 4);
   const cellSize = Math.max(1.5, (dpi || 300) / lpi);
   const pad = Math.ceil(cellSize * 2) + 4;
   const bandHeight = Math.max(200, Math.round(2_000_000 / w));
   for (let y0 = 0; y0 < h; y0 += bandHeight) {
     const y1 = Math.min(h, y0 + bandHeight);
-    const padY0 = Math.max(0, y0 - pad), padY1 = Math.min(h, y1 + pad);
+    const padY0 = Math.max(0, y0 - pad),
+      padY1 = Math.min(h, y1 + pad);
     const bandH = padY1 - padY0;
     const bandSrc = new Uint8Array(w * bandH * comps);
     const srcSliceLen = padY1 * w * comps - padY0 * w * comps;
     // FIX 2.1: Validate band buffer size before .set()
     if (srcSliceLen > bandSrc.length) {
-      throw new Error(`Chunked halftone: band buffer mismatch — source slice ${srcSliceLen} exceeds buffer ${bandSrc.length}`);
+      throw new Error(
+        `Chunked halftone: band buffer mismatch — source slice ${srcSliceLen} exceeds buffer ${bandSrc.length}`
+      );
     }
     bandSrc.set(srcBuf.subarray(padY0 * w * comps, padY1 * w * comps));
     const bandOut = computeHalftoneBuffer(bandSrc, comps, w, bandH, lpi, angleDeg, dotGainPct, dpi, inkR, inkG, inkB);
-    const sliceStart = (y0 - padY0) * w * 4, sliceLen = (y1 - y0) * w * 4;
+    const sliceStart = (y0 - padY0) * w * 4,
+      sliceLen = (y1 - y0) * w * 4;
     // FIX: Also validate output slice
     if (sliceStart + sliceLen > out.length) {
-      throw new Error(`Chunked halftone: output buffer mismatch — slice ${sliceStart}+${sliceLen} exceeds ${out.length}`);
+      throw new Error(
+        `Chunked halftone: output buffer mismatch — slice ${sliceStart}+${sliceLen} exceeds ${out.length}`
+      );
     }
     out.set(bandOut.subarray(sliceStart, sliceStart + sliceLen), y0 * w * 4);
-    await new Promise(function(r) { setTimeout(r, 0); }); // yield to event loop
+    await new Promise(function (r) {
+      setTimeout(r, 0);
+    }); // yield to event loop
   }
   return out;
 }
@@ -202,26 +240,35 @@ function upscaleNearest(buf, sw, sh, dw, dh) {
     throw new Error(`upscaleNearest: buffer size mismatch. Expected ${expectedSize}, got ${buf.length}`);
   }
   const out = new Uint8Array(dw * dh * 4);
-  const xRatio = sw / dw, yRatio = sh / dh;
+  const xRatio = sw / dw,
+    yRatio = sh / dh;
   for (let y = 0; y < dh; y++) {
     const sy = Math.min(sh - 1, Math.floor(y * yRatio));
     for (let x = 0; x < dw; x++) {
       const sx = Math.min(sw - 1, Math.floor(x * xRatio));
-      const si = (sy * sw + sx) * 4, di = (y * dw + x) * 4;
-      out[di] = buf[si]; out[di + 1] = buf[si + 1]; out[di + 2] = buf[si + 2]; out[di + 3] = buf[si + 3];
+      const si = (sy * sw + sx) * 4,
+        di = (y * dw + x) * 4;
+      out[di] = buf[si];
+      out[di + 1] = buf[si + 1];
+      out[di + 2] = buf[si + 2];
+      out[di + 3] = buf[si + 3];
     }
   }
   return out;
 }
 
 function checkTonalVariation(buf, comps) {
-  let sum = 0, sumSq = 0, n = 0;
+  let sum = 0,
+    sumSq = 0,
+    n = 0;
   for (let i = 0; i < buf.length; i += comps) {
     const a = comps >= 4 ? buf[i + 3] : 255;
     if (a < 10) continue;
     // FIX 2.12: Round tone to integer to prevent floating-point jitter affecting dot radius
     const g = comps >= 3 ? Math.round((buf[i] + buf[i + 1] + buf[i + 2]) / 3) : buf[i];
-    sum += g; sumSq += g * g; n++;
+    sum += g;
+    sumSq += g * g;
+    n++;
   }
   if (n === 0) return { hasVariation: false, stdDev: 0, mean: 0, n: 0 };
   const mean = sum / n;
@@ -235,7 +282,8 @@ async function readLayerPixels(layerId, targetSize) {
   const px = await window.imaging.getPixels(opts);
   const buf = await px.imageData.getData();
   const comps = px.imageData.components;
-  const w = px.imageData.width, h = px.imageData.height;
+  const w = px.imageData.width,
+    h = px.imageData.height;
   px.imageData.dispose();
   return { buf: buf, comps: comps, w: w, h: h };
 }
@@ -249,30 +297,57 @@ let _tonalWarningShown = false;
 async function writeHalftonePreview(layerId, fullW, fullH, myGen) {
   const longEdge = Math.max(fullW, fullH);
   const scale = Math.min(1, LIVE_PREVIEW_CAP / longEdge);
-  const sw = Math.max(1, Math.round(fullW * scale)), sh = Math.max(1, Math.round(fullH * scale));
+  const sw = Math.max(1, Math.round(fullW * scale)),
+    sh = Math.max(1, Math.round(fullH * scale));
   const src = await readLayerPixels(layerId, { width: sw, height: sh });
-  
+
   // FIX 1.4: Validate that readLayerPixels returned expected dimensions
   if (src.w !== sw || src.h !== sh) {
     throw new Error(`Preview dimensions mismatch: expected ${sw}×${sh}, got ${src.w}×${src.h} from readLayerPixels`);
   }
-  
+
   const variation = checkTonalVariation(src.buf, src.comps);
   const angle = parseInt(val("htAngle"), 10) || 45;
   const lpi = parseInt(val("lpi"), 10) || 45;
   const dotGain = num("dotGain");
   // FIX 2.8: Default to 300 DPI if resolution is undefined
-  const docResolution = window.app.activeDocument ? (window.app.activeDocument.resolution || 300) : 300;
+  const docResolution = window.app.activeDocument ? window.app.activeDocument.resolution || 300 : 300;
   const effectiveDPI = docResolution * scale; // scale DPI with the buffer so dots stay proportionally correct
   const ink = hexToRgb(val("htColor"));
-  const small = computeHalftoneBuffer(src.buf, src.comps, sw, sh, lpi, angle, dotGain, effectiveDPI, ink.r, ink.g, ink.b);
-  if (typeof isRenderStale === "function" && myGen !== undefined && isRenderStale(myGen)) { return variation; } // superseded mid-compute — skip write
-  const full = (sw === fullW && sh === fullH) ? small : upscaleNearest(small, sw, sh, fullW, fullH);
-  const imgData = await window.imaging.createImageDataFromBuffer(full, { width: fullW, height: fullH, components: 4, colorSpace: "RGB" });
-  if (typeof isRenderStale === "function" && myGen !== undefined && isRenderStale(myGen)) { if (imgData.dispose) imgData.dispose(); return variation; } // last check, right before the write
+  const small = computeHalftoneBuffer(
+    src.buf,
+    src.comps,
+    sw,
+    sh,
+    lpi,
+    angle,
+    dotGain,
+    effectiveDPI,
+    ink.r,
+    ink.g,
+    ink.b
+  );
+  if (typeof isRenderStale === "function" && myGen !== undefined && isRenderStale(myGen)) {
+    return variation;
+  } // superseded mid-compute — skip write
+  const full = sw === fullW && sh === fullH ? small : upscaleNearest(small, sw, sh, fullW, fullH);
+  const imgData = await window.imaging.createImageDataFromBuffer(full, {
+    width: fullW,
+    height: fullH,
+    components: 4,
+    colorSpace: "RGB",
+  });
+  if (typeof isRenderStale === "function" && myGen !== undefined && isRenderStale(myGen)) {
+    if (imgData.dispose) imgData.dispose();
+    return variation;
+  } // last check, right before the write
   try {
     setWriteInProgress(true); // FIX 1.2: Track putPixels completion
-    await window.imaging.putPixels({ layerID: layerId, imageData: imgData, targetBounds: { left: 0, top: 0, right: fullW, bottom: fullH } });
+    await window.imaging.putPixels({
+      layerID: layerId,
+      imageData: imgData,
+      targetBounds: { left: 0, top: 0, right: fullW, bottom: fullH },
+    });
   } finally {
     setWriteInProgress(false);
     if (imgData.dispose) imgData.dispose();
@@ -288,13 +363,39 @@ async function writeHalftoneFinal(layerId, myGen) {
   const lpi = parseInt(val("lpi"), 10) || 45;
   const dotGain = num("dotGain");
   // FIX 2.8: Default to 300 DPI if resolution is undefined
-  const dpi = window.app.activeDocument ? (window.app.activeDocument.resolution || 300) : 300;
+  const dpi = window.app.activeDocument ? window.app.activeDocument.resolution || 300 : 300;
   const ink = hexToRgb(val("htColor"));
-  const out = await computeHalftoneBufferChunked(src.buf, src.comps, src.w, src.h, lpi, angle, dotGain, dpi, ink.r, ink.g, ink.b);
-  if (typeof isRenderStale === "function" && myGen !== undefined && isRenderStale(myGen)) { return variation; } // superseded mid-compute — skip write
-  const imgData = await window.imaging.createImageDataFromBuffer(out, { width: src.w, height: src.h, components: 4, colorSpace: "RGB" });
-  if (typeof isRenderStale === "function" && myGen !== undefined && isRenderStale(myGen)) { if (imgData.dispose) imgData.dispose(); return variation; } // last check, right before the write
-  await window.imaging.putPixels({ layerID: layerId, imageData: imgData, targetBounds: { left: 0, top: 0, right: src.w, bottom: src.h } });
+  const out = await computeHalftoneBufferChunked(
+    src.buf,
+    src.comps,
+    src.w,
+    src.h,
+    lpi,
+    angle,
+    dotGain,
+    dpi,
+    ink.r,
+    ink.g,
+    ink.b
+  );
+  if (typeof isRenderStale === "function" && myGen !== undefined && isRenderStale(myGen)) {
+    return variation;
+  } // superseded mid-compute — skip write
+  const imgData = await window.imaging.createImageDataFromBuffer(out, {
+    width: src.w,
+    height: src.h,
+    components: 4,
+    colorSpace: "RGB",
+  });
+  if (typeof isRenderStale === "function" && myGen !== undefined && isRenderStale(myGen)) {
+    if (imgData.dispose) imgData.dispose();
+    return variation;
+  } // last check, right before the write
+  await window.imaging.putPixels({
+    layerID: layerId,
+    imageData: imgData,
+    targetBounds: { left: 0, top: 0, right: src.w, bottom: src.h },
+  });
   if (imgData.dispose) imgData.dispose();
   return variation;
 }
@@ -313,25 +414,41 @@ async function applyHalftoneEngine() {
     await waitForRenderLock(); // don't run concurrently with an in-flight live-preview write
     const angle = parseInt(val("htAngle"), 10) || 45;
     let variation, layerId;
-    await modal("Halftone", async function() {
+    await modal("Halftone", async function () {
       layerId = await bpCreateLayer([{ _obj: "mergeVisible", duplicate: true }]);
       if (layerId == null) throw new Error("Could not create halftone layer");
       // === INTEGRATED v5.2.1: validation + benchmark + error-context around the real render ===
-      if (window.PhotoneshopHalftoneIntegrated && typeof window.PhotoneshopHalftoneIntegrated.applyHalftone === "function") {
-        variation = await window.PhotoneshopHalftoneIntegrated.applyHalftone(layerId, myGen, function(p) { console.log("Halftone:", p); });
+      if (
+        window.PhotoneshopHalftoneIntegrated &&
+        typeof window.PhotoneshopHalftoneIntegrated.applyHalftone === "function"
+      ) {
+        variation = await window.PhotoneshopHalftoneIntegrated.applyHalftone(layerId, myGen, function (p) {
+          console.log("Halftone:", p);
+        });
       } else {
         console.warn("Integration layer not available, using direct render");
         variation = await writeHalftoneFinal(layerId, myGen);
       }
-      await bp([{ _obj: "set", _target: [{ _ref: "layer", _id: layerId }], to: { _obj: "layer", name: val("lpi") + "lpi " + angle + "\u00b0" } }]);
-      await bp([{ _obj: "select", _target: [{ _ref: "layer", _id: layerId }] }]).catch(function() {});
+      await bp([
+        {
+          _obj: "set",
+          _target: [{ _ref: "layer", _id: layerId }],
+          to: { _obj: "layer", name: val("lpi") + "lpi " + angle + "\u00b0" },
+        },
+      ]);
+      await bp([{ _obj: "select", _target: [{ _ref: "layer", _id: layerId }] }]).catch(function () {});
       await groupSelectedInto("HalftoneDots");
     });
     recordAction("group", "HalftoneDots");
     if (variation && !variation.hasVariation) {
-      setStatus("Halftone applied \u2014 but artwork is mostly flat/binary, so it renders as a near-solid fill. Add tonal variation (Design Studio \u2192 Exposure/Blur) for visible dots.", "warning");
+      setStatus(
+        "Halftone applied \u2014 but artwork is mostly flat/binary, so it renders as a near-solid fill. Add tonal variation (Design Studio \u2192 Exposure/Blur) for visible dots.",
+        "warning"
+      );
     } else {
       setStatus("Halftone applied \u2014 " + val("lpi") + " LPI at " + angle + "\u00b0", "success");
     }
-  } catch (e) { setStatus("Error: " + e.message, "error"); }
+  } catch (e) {
+    setStatus("Error: " + e.message, "error");
+  }
 }

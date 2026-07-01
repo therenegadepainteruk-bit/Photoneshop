@@ -20,15 +20,15 @@ function currentPipeline() {
 
 let _currentTab = 2;
 let _previewActive = false;
-let _sourceReady   = false;
-let _sourceId       = null;
-let _previewId       = null;
-let _previewTimer  = null;
-let _previewDirty  = false;
-let _busy          = false;
+let _sourceReady = false;
+let _sourceId = null;
+let _previewId = null;
+let _previewTimer = null;
+let _previewDirty = false;
+let _busy = false;
 // FIX 1.2: _writeInProgress moved to core/api.js for sharing with halftone.js
-let _renderGen     = 0;   // monotonically increasing — every render claims one
-let _targetDocId   = null; // the document this preview session belongs to
+let _renderGen = 0; // monotonically increasing — every render claims one
+let _targetDocId = null; // the document this preview session belongs to
 const DEBOUNCE_MS = 130;
 
 // Every NEW desired operation (a fresh preview tick, or Apply, or Cancel)
@@ -36,8 +36,12 @@ const DEBOUNCE_MS = 130;
 // an OLDER id can check `myGen !== _renderGen` right before it writes pixels,
 // and simply abort if it's been superseded — avoids the "stale write" race
 // (slider moved again mid-render, or Apply clicked mid-render).
-function bumpRenderGen() { return (++_renderGen); }
-function isRenderStale(myGen) { return myGen !== _renderGen; }
+function bumpRenderGen() {
+  return ++_renderGen;
+}
+function isRenderStale(myGen) {
+  return myGen !== _renderGen;
+}
 
 // Waits for any in-flight render to finish before a caller (Apply/Cancel)
 // proceeds to touch the same layers. Bounded so a stuck render can't hang
@@ -45,10 +49,14 @@ function isRenderStale(myGen) { return myGen !== _renderGen; }
 // FIX 1.2: Also waits for in-flight putPixels to complete
 async function waitForRenderLock(maxMs) {
   const start = Date.now();
-  while ((_busy || getWriteInProgress()) && (Date.now() - start) < (maxMs || 4000)) {
-    await new Promise(function(r) { setTimeout(r, 30); });
+  while ((_busy || getWriteInProgress()) && Date.now() - start < (maxMs || 4000)) {
+    await new Promise(function (r) {
+      setTimeout(r, 30);
+    });
   }
-  if (_busy || getWriteInProgress()) { setStatus("Warning: previous render did not finish in time", "warning"); }
+  if (_busy || getWriteInProgress()) {
+    setStatus("Warning: previous render did not finish in time", "warning");
+  }
   return !_busy && !getWriteInProgress();
 }
 
@@ -61,42 +69,62 @@ function docStillValid() {
 
 // FIX 2.2: Clear preview timer to prevent accumulation on tab switches
 function clearPreviewTimer() {
-  if (_previewTimer) { clearInterval(_previewTimer); _previewTimer = null; }
+  if (_previewTimer) {
+    clearInterval(_previewTimer);
+    _previewTimer = null;
+  }
 }
 
 async function ensureSource() {
   if (_sourceReady && _sourceId != null) return;
   _tonalWarningShown = false; // allow the halftone tonal-variation warning to show again for a fresh session
-  await modal("Photoneshop: snapshot", async function() {
+  await modal("Photoneshop: snapshot", async function () {
     _targetDocId = window.app.activeDocument ? window.app.activeDocument.id : null;
     _sourceId = await bpCreateLayer([{ _obj: "mergeVisible", duplicate: true }]);
     if (_sourceId == null) throw new Error("Could not create source snapshot");
-    await bp([{ _obj: "set", _target: [{ _ref: "layer", _id: _sourceId }], to: { _obj: "layer", name: "Photoneshop Source" } }]);
-    await bp([{ _obj: "hide", null: [{ _ref: "layer", _id: _sourceId }] }]).catch(function() {});
+    await bp([
+      { _obj: "set", _target: [{ _ref: "layer", _id: _sourceId }], to: { _obj: "layer", name: "Photoneshop Source" } },
+    ]);
+    await bp([{ _obj: "hide", null: [{ _ref: "layer", _id: _sourceId }] }]).catch(function () {});
   });
   _sourceReady = true;
 }
 
 async function buildPreview(myGen) {
-  await modal("Photoneshop: preview", async function() {
-    if (!docStillValid()) { throw new Error("Active document changed during preview"); }
+  await modal("Photoneshop: preview", async function () {
+    if (!docStillValid()) {
+      throw new Error("Active document changed during preview");
+    }
     if (isRenderStale(myGen)) return; // superseded while we were still snapshotting
     if (_previewId != null) {
-      await bp([{ _obj: "delete", _target: [{ _ref: "layer", _id: _previewId }] }]).catch(function() {});
+      await bp([{ _obj: "delete", _target: [{ _ref: "layer", _id: _previewId }] }]).catch(function () {});
       _previewId = null;
     }
-    _previewId = await bpCreateLayer([{ _obj: "duplicate", _target: [{ _ref: "layer", _id: _sourceId }], name: "Photoneshop Preview" }]);
+    _previewId = await bpCreateLayer([
+      { _obj: "duplicate", _target: [{ _ref: "layer", _id: _sourceId }], name: "Photoneshop Preview" },
+    ]);
     if (_previewId == null) throw new Error("Could not create preview layer");
     if (isRenderStale(myGen)) return; // superseded mid-duplicate
-    await bp([{ _obj: "show", null: [{ _ref: "layer", _id: _previewId }] }]).catch(function() {});
-    await bp([{ _obj: "select", _target: [{ _ref: "layer", _id: _previewId }], makeVisible: true }]).catch(function() {});
-    await bp([{ _obj: "move", _target: [{ _ref: "layer", _id: _previewId }], to: { _ref: "layer", _enum: "ordinal", _value: "front" } }]).catch(function() {});
+    await bp([{ _obj: "show", null: [{ _ref: "layer", _id: _previewId }] }]).catch(function () {});
+    await bp([{ _obj: "select", _target: [{ _ref: "layer", _id: _previewId }], makeVisible: true }]).catch(
+      function () {}
+    );
+    await bp([
+      {
+        _obj: "move",
+        _target: [{ _ref: "layer", _id: _previewId }],
+        to: { _ref: "layer", _enum: "ordinal", _value: "front" },
+      },
+    ]).catch(function () {});
     if (isRenderStale(myGen)) return; // superseded before the (potentially slow) write stage
     if (_currentTab === 3) {
       let v = await writeHalftoneToLayer(_previewId, myGen); // engines/halftone.js — checks staleness again right before its own putPixels
       if (v && !v.hasVariation && !_tonalWarningShown) {
         _tonalWarningShown = true;
-        setStatus("Artwork is mostly flat/binary \u2014 halftone will look like a solid fill. Add tone variation first for visible dots.", "warning");
+        setStatus(
+          "Artwork is mostly flat/binary \u2014 halftone will look like a solid fill. Add tone variation first for visible dots.",
+          "warning"
+        );
       }
     } else {
       if (!isRenderStale(myGen)) await bp(currentPipeline());
@@ -106,13 +134,16 @@ async function buildPreview(myGen) {
 }
 
 async function refreshPreview() {
-  if (_busy) { _previewDirty = true; return; }
+  if (_busy) {
+    _previewDirty = true;
+    return;
+  }
   _busy = true;
   const myGen = bumpRenderGen();
   let failed = false;
   try {
     // FIX 1.5: Merge ensureSource and buildPreview into a single modal call to prevent nesting
-    await modal("Photoneshop: preview (unified)", async function() {
+    await modal("Photoneshop: preview (unified)", async function () {
       // Ensure source layer exists
       if (!_sourceReady || _sourceId == null) {
         if (!docStillValid()) throw new Error("Active document changed during preview");
@@ -120,32 +151,53 @@ async function refreshPreview() {
         _targetDocId = window.app.activeDocument ? window.app.activeDocument.id : null;
         _sourceId = await bpCreateLayer([{ _obj: "mergeVisible", duplicate: true }]);
         if (_sourceId == null) throw new Error("Could not create source snapshot");
-        await bp([{ _obj: "set", _target: [{ _ref: "layer", _id: _sourceId }], to: { _obj: "layer", name: "Photoneshop Source" } }]);
-        await bp([{ _obj: "hide", null: [{ _ref: "layer", _id: _sourceId }] }]).catch(function() {});
+        await bp([
+          {
+            _obj: "set",
+            _target: [{ _ref: "layer", _id: _sourceId }],
+            to: { _obj: "layer", name: "Photoneshop Source" },
+          },
+        ]);
+        await bp([{ _obj: "hide", null: [{ _ref: "layer", _id: _sourceId }] }]).catch(function () {});
         _sourceReady = true;
       }
-      
+
       // Build preview from source
-      if (!docStillValid()) { throw new Error("Active document changed during preview"); }
+      if (!docStillValid()) {
+        throw new Error("Active document changed during preview");
+      }
       if (isRenderStale(myGen)) return; // superseded while we were still snapshotting
       if (_previewId != null) {
-        await bp([{ _obj: "delete", _target: [{ _ref: "layer", _id: _previewId }] }]).catch(function() {});
+        await bp([{ _obj: "delete", _target: [{ _ref: "layer", _id: _previewId }] }]).catch(function () {});
         _previewId = null;
       }
-      _previewId = await bpCreateLayer([{ _obj: "duplicate", _target: [{ _ref: "layer", _id: _sourceId }], name: "Photoneshop Preview" }]);
+      _previewId = await bpCreateLayer([
+        { _obj: "duplicate", _target: [{ _ref: "layer", _id: _sourceId }], name: "Photoneshop Preview" },
+      ]);
       if (_previewId == null) throw new Error("Could not create preview layer");
       if (isRenderStale(myGen)) return; // superseded mid-duplicate
-      await bp([{ _obj: "show", null: [{ _ref: "layer", _id: _previewId }] }]).catch(function() {});
-      await bp([{ _obj: "select", _target: [{ _ref: "layer", _id: _previewId }], makeVisible: true }]).catch(function() {});
-      await bp([{ _obj: "move", _target: [{ _ref: "layer", _id: _previewId }], to: { _ref: "layer", _enum: "ordinal", _value: "front" } }]).catch(function() {});
+      await bp([{ _obj: "show", null: [{ _ref: "layer", _id: _previewId }] }]).catch(function () {});
+      await bp([{ _obj: "select", _target: [{ _ref: "layer", _id: _previewId }], makeVisible: true }]).catch(
+        function () {}
+      );
+      await bp([
+        {
+          _obj: "move",
+          _target: [{ _ref: "layer", _id: _previewId }],
+          to: { _ref: "layer", _enum: "ordinal", _value: "front" },
+        },
+      ]).catch(function () {});
       if (isRenderStale(myGen)) return; // superseded before the (potentially slow) write stage
-      
+
       // Apply tab-specific processing
       if (_currentTab === 3) {
         let v = await writeHalftoneToLayer(_previewId, myGen); // engines/halftone.js — checks staleness again right before its own putPixels
         if (v && !v.hasVariation && !_tonalWarningShown) {
           _tonalWarningShown = true;
-          setStatus("Artwork is mostly flat/binary — halftone will look like a solid fill. Add tone variation first for visible dots.", "warning");
+          setStatus(
+            "Artwork is mostly flat/binary — halftone will look like a solid fill. Add tone variation first for visible dots.",
+            "warning"
+          );
         }
       } else {
         if (!isRenderStale(myGen)) await bp(currentPipeline());
@@ -160,9 +212,14 @@ async function refreshPreview() {
     // On failure, do NOT immediately retry — that previously caused a tight
     // infinite loop hammering Photoshop (the reported severe slowdown).
     // Just consume the dirty flag; the next slider move will try again normally.
-    if (failed) { _previewDirty = false; }
-    else if (_previewDirty) { _previewDirty = false; setTimeout(refreshPreview, 0); }
-    else { updateCoverage(); }
+    if (failed) {
+      _previewDirty = false;
+    } else if (_previewDirty) {
+      _previewDirty = false;
+      setTimeout(refreshPreview, 0);
+    } else {
+      updateCoverage();
+    }
   }
 }
 
@@ -170,8 +227,12 @@ function schedulePreview() {
   if (!hasDoc() || !EDIT_PANES[_currentTab]) return;
   _previewDirty = true;
   if (_previewTimer) return;
-  _previewTimer = setInterval(function() {
-    if (!_previewDirty) { clearInterval(_previewTimer); _previewTimer = null; return; }
+  _previewTimer = setInterval(function () {
+    if (!_previewDirty) {
+      clearInterval(_previewTimer);
+      _previewTimer = null;
+      return;
+    }
     _previewDirty = false;
     refreshPreview();
   }, DEBOUNCE_MS);
@@ -180,24 +241,33 @@ function schedulePreview() {
 async function removePreview() {
   if (!_previewActive && !_sourceReady) return;
   try {
-    await modal("Photoneshop: remove preview", async function() {
-      if (_previewId != null) await bp([{ _obj: "delete", _target: [{ _ref: "layer", _id: _previewId }] }]).catch(function() {});
-      if (_sourceId != null) await bp([{ _obj: "delete", _target: [{ _ref: "layer", _id: _sourceId }] }]).catch(function() {});
+    await modal("Photoneshop: remove preview", async function () {
+      if (_previewId != null)
+        await bp([{ _obj: "delete", _target: [{ _ref: "layer", _id: _previewId }] }]).catch(function () {});
+      if (_sourceId != null)
+        await bp([{ _obj: "delete", _target: [{ _ref: "layer", _id: _sourceId }] }]).catch(function () {});
     });
-  } catch (e) { /* best-effort */ }
+  } catch (e) {
+    /* best-effort */
+  }
   _previewActive = false;
-  _sourceReady   = false;
+  _sourceReady = false;
   _previewId = null;
-  _sourceId  = null;
+  _sourceId = null;
 }
 
 // Most accurate GROUP name for Design Studio (covers 3 sub-effects in one tab).
 function effectGroupName() {
   let threshChanged = parseInt(val("thresh"), 10) !== 128;
-  let toneChanged   = num("exposure") !== 0 || num("highlight") !== 0 || num("shadow") !== 0 ||
-                       num("bright") !== 0 || num("contrast") !== 0 || num("blur") !== 0;
-  let vintageChanged = num("fade") !== 0 || num("distress") !== 0 || num("bleed") !== 0 ||
-                        num("grain") !== 0 || val("effect") !== "none";
+  let toneChanged =
+    num("exposure") !== 0 ||
+    num("highlight") !== 0 ||
+    num("shadow") !== 0 ||
+    num("bright") !== 0 ||
+    num("contrast") !== 0 ||
+    num("blur") !== 0;
+  let vintageChanged =
+    num("fade") !== 0 || num("distress") !== 0 || num("bleed") !== 0 || num("grain") !== 0 || val("effect") !== "none";
   let changedCount = (threshChanged ? 1 : 0) + (toneChanged ? 1 : 0) + (vintageChanged ? 1 : 0);
   if (changedCount === 1) {
     if (threshChanged) return "DesignStudioThreshold";
@@ -211,8 +281,10 @@ function effectGroupName() {
 // (not just its group) is self-documenting — e.g. "8px 45°" for a halftone layer.
 function resultLayerName() {
   switch (_currentTab) {
-    case 3: return val("lpi") + "lpi " + val("htAngle") + "\u00b0";
-    case 6: return "Underbase " + val("wDensity") + "%";
+    case 3:
+      return val("lpi") + "lpi " + val("htAngle") + "\u00b0";
+    case 6:
+      return "Underbase " + val("wDensity") + "%";
     case 9: {
       let parts = [];
       if (num("dtgInk") > 0) parts.push("Ink -" + val("dtgInk") + "%");
@@ -227,7 +299,8 @@ function resultLayerName() {
       if (num("dtfSharp") > 0) parts.push("Sharpen +" + val("dtfSharp") + "%");
       return parts.length ? parts.join(", ") : "DTF Optimised";
     }
-    default: return effectGroupName().replace("DesignStudio", "") || "Result";
+    default:
+      return effectGroupName().replace("DesignStudio", "") || "Result";
   }
 }
 
@@ -240,31 +313,41 @@ async function applyResult() {
     let groupName = TAB_GROUP[_currentTab] || effectGroupName();
     let layerName = resultLayerName();
     if (!_previewActive) {
-      await modal("Photoneshop: apply", async function() {
+      await modal("Photoneshop: apply", async function () {
         let id = await bpCreateLayer([{ _obj: "mergeVisible", duplicate: true }]);
         await bp([{ _obj: "set", _target: [{ _ref: "layer", _id: id }], to: { _obj: "layer", name: layerName } }]);
-        if (_currentTab === 3) { await writeHalftoneFinal(id, myGen); }
-        else { await bp(currentPipeline()); }
-        await bp([{ _obj: "select", _target: [{ _ref: "layer", _id: id }] }]).catch(function() {});
+        if (_currentTab === 3) {
+          await writeHalftoneFinal(id, myGen);
+        } else {
+          await bp(currentPipeline());
+        }
+        await bp([{ _obj: "select", _target: [{ _ref: "layer", _id: id }] }]).catch(function () {});
         await groupSelectedInto(groupName);
       });
     } else {
-      await modal("Photoneshop: commit", async function() {
-        if (_currentTab === 3) { await writeHalftoneFinal(_previewId, myGen); } // upgrade fast preview -> full quality
-        await bp([{ _obj: "set", _target: [{ _ref: "layer", _id: _previewId }], to: { _obj: "layer", name: layerName } }]);
-        if (_sourceId != null) await bp([{ _obj: "delete", _target: [{ _ref: "layer", _id: _sourceId }] }]).catch(function() {});
-        await bp([{ _obj: "select", _target: [{ _ref: "layer", _id: _previewId }] }]).catch(function() {});
+      await modal("Photoneshop: commit", async function () {
+        if (_currentTab === 3) {
+          await writeHalftoneFinal(_previewId, myGen);
+        } // upgrade fast preview -> full quality
+        await bp([
+          { _obj: "set", _target: [{ _ref: "layer", _id: _previewId }], to: { _obj: "layer", name: layerName } },
+        ]);
+        if (_sourceId != null)
+          await bp([{ _obj: "delete", _target: [{ _ref: "layer", _id: _sourceId }] }]).catch(function () {});
+        await bp([{ _obj: "select", _target: [{ _ref: "layer", _id: _previewId }] }]).catch(function () {});
         await groupSelectedInto(groupName);
       });
       _previewActive = false;
-      _sourceReady   = false;
+      _sourceReady = false;
       _previewId = null;
-      _sourceId  = null;
+      _sourceId = null;
     }
     recordAction("group", groupName);
     saveLastUsed();
     setStatus("Applied — " + layerName + " in " + groupName, "success");
-  } catch (e) { setStatus("Error: " + (e.message || e), "error"); }
+  } catch (e) {
+    setStatus("Error: " + (e.message || e), "error");
+  }
 }
 
 async function cancelPreview() {

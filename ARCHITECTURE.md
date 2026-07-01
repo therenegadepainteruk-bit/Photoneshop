@@ -2,13 +2,13 @@
 
 ## Stability Improvements (v5.0 → v5.2)
 
-| Concern | Previous | v5.2 | Status |
-|---------|----------|------|--------|
-| Halftone OOM crashes | Buffer allocation at 400MB | Tiled 256×256 (1MB per tile) | ✅ FIXED |
-| No memory pre-flight | None | Pre-flight check + pooling | ✅ FIXED |
-| Error context missing | Generic "Filter failed" | Operation + layer state snapshots | ✅ FIXED |
-| Validation (RGB check only) | 1 check | 7 checks (RGB, layer, bit depth, RAM, etc.) | ✅ FIXED |
-| No telemetry | Manual testing only | Auto benchmarking, regression detection | ✅ ADDED |
+| Concern                     | Previous                   | v5.2                                        | Status   |
+| --------------------------- | -------------------------- | ------------------------------------------- | -------- |
+| Halftone OOM crashes        | Buffer allocation at 400MB | Tiled 256×256 (1MB per tile)                | ✅ FIXED |
+| No memory pre-flight        | None                       | Pre-flight check + pooling                  | ✅ FIXED |
+| Error context missing       | Generic "Filter failed"    | Operation + layer state snapshots           | ✅ FIXED |
+| Validation (RGB check only) | 1 check                    | 7 checks (RGB, layer, bit depth, RAM, etc.) | ✅ FIXED |
+| No telemetry                | Manual testing only        | Auto benchmarking, regression detection     | ✅ ADDED |
 
 **Stability score improvement:** 7.5/10 → 8.9/10
 
@@ -74,6 +74,7 @@ index.html
 ## Core Module APIs
 
 ### `core/memory.js`
+
 ```javascript
 window.PhotoneshopMemory = {
   allocateBuffer(width, height, depth, context),     // Throws if OOM
@@ -86,17 +87,19 @@ window.PhotoneshopMemory = {
 ```
 
 **Usage Pattern:**
+
 ```javascript
 try {
-  window.PhotoneshopMemory.allocateBuffer(width, height, 4, 'halftone-render');
+  window.PhotoneshopMemory.allocateBuffer(width, height, 4, "halftone-render");
   // Safe to proceed with rendering
 } catch (err) {
   // Use tiled/fallback renderer
-  console.warn('Memory constrained:', err.message);
+  console.warn("Memory constrained:", err.message);
 }
 ```
 
 ### `core/errors.js`
+
 ```javascript
 window.PhotoneshopErrors = {
   PhotoneshopError,                 // class extending Error
@@ -110,17 +113,19 @@ window.PhotoneshopErrors = {
 ```
 
 **Error Structure:**
+
 ```javascript
 new PhotoneshopErrors.PhotoneshopError({
-  operation: 'halftone-apply',
-  details: 'Buffer size mismatch',
+  operation: "halftone-apply",
+  details: "Buffer size mismatch",
   cause: originalError,
   timestamp: ISO8601,
-  layerState: { name, width, height, depth, opacity }
-})
+  layerState: { name, width, height, depth, opacity },
+});
 ```
 
 ### `core/validation.js`
+
 ```javascript
 window.PhotoneshopValidation = {
   validateDocumentExists(doc),       // → true/false
@@ -130,13 +135,14 @@ window.PhotoneshopValidation = {
   validateLayerUnlocked(layer),
   validateBitDepth(doc),             // 8 or 16-bit only
   validateRAMAvailable(estimatedMB),
-  
+
   runAllChecks(doc, layer, estimatedMB), // → { allPass, results: [{check, pass, fix}] }
   formatValidationReport(allPass, results) // → User-friendly string
 };
 ```
 
 **Validation Results:**
+
 ```javascript
 {
   allPass: false,
@@ -148,6 +154,7 @@ window.PhotoneshopValidation = {
 ```
 
 ### `core/benchmark.js`
+
 ```javascript
 window.PhotoneshopBenchmark = {
   Benchmark,                          // class
@@ -161,6 +168,7 @@ window.PhotoneshopBenchmark = {
 ```
 
 **Benchmark Object:**
+
 ```javascript
 {
   name: 'halftone-apply',
@@ -175,11 +183,12 @@ window.PhotoneshopBenchmark = {
 ```
 
 ### `engines/halftone-tiled.js` [NEW]
+
 ```javascript
 window.PhotoneshopHalftoneTiled = {
   TILE_SIZE: 256,
   OVERLAP: 16,
-  
+
   computeHalftoneTile(srcBuf, srcW, srcH, srcDepth, tileX, tileY, params),
   tiledHalftoneRender(srcBuf, srcDepth, w, h, params, onProgress),
   applyHalftoneTiled(layer, params, onProgress) // High-level API
@@ -187,6 +196,7 @@ window.PhotoneshopHalftoneTiled = {
 ```
 
 **Progress Callback:**
+
 ```javascript
 onProgress(currentTileIndex, totalTiles, percentComplete);
 // Called after each tile renders (yields control to event loop)
@@ -197,34 +207,37 @@ onProgress(currentTileIndex, totalTiles, percentComplete);
 ## Memory Safety Patterns
 
 ### Pattern 1: Pre-Flight Check + Fallback
+
 ```javascript
 // In halftone.js applyHalftoneWithArch()
 const estimatedMB = (w * h * 4) / (1024 * 1024);
 try {
-  window.PhotoneshopMemory.allocateBuffer(w, h, 4, 'halftone-precheck');
+  window.PhotoneshopMemory.allocateBuffer(w, h, 4, "halftone-precheck");
   // Traditional buffer rendering safe
-  useTiled = (w * h > 16_000_000); // But use tiled for huge images
+  useTiled = w * h > 16_000_000; // But use tiled for huge images
 } catch (err) {
-  console.warn('Memory check suggests tiled:', err.message);
+  console.warn("Memory check suggests tiled:", err.message);
   useTiled = true; // Force tiled if allocation fails
 }
 ```
 
 ### Pattern 2: Tile Iteration (Non-Blocking)
+
 ```javascript
 // In halftone-tiled.js tiledHalftoneRender()
 for (let tileIdx = 0; tileIdx < totalTiles; tileIdx++) {
   const result = await renderTile(tileIdx); // Each tile ~1MB
-  
+
   // Yield to event loop after each tile
   // (keeps Photoshop responsive, prevents "unresponsive plugin" error)
-  await new Promise(resolve => setTimeout(resolve, 0));
-  
-  onProgress(tileIdx + 1, totalTiles, Math.round((tileIdx + 1) / totalTiles * 100));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  onProgress(tileIdx + 1, totalTiles, Math.round(((tileIdx + 1) / totalTiles) * 100));
 }
 ```
 
 ### Pattern 3: Error Context Capture
+
 ```javascript
 // In errors.js safe* wrappers
 try {
@@ -240,12 +253,13 @@ try {
 ```
 
 ### Pattern 4: Validation Gate
+
 ```javascript
 // In halftone.js applyHalftoneWithArch()
 const report = window.PhotoneshopValidation.runAllChecks(doc, layer, 150);
 if (!report.allPass) {
   const msg = window.PhotoneshopValidation.formatValidationReport(report.allPass, report.results);
-  console.warn('Warnings:', msg);
+  console.warn("Warnings:", msg);
   // Don't block, just warn (soft fail)
 }
 ```
@@ -255,6 +269,7 @@ if (!report.allPass) {
 ## Tiled Halftone Algorithm
 
 ### The Problem (v5.0)
+
 ```
 Full buffer allocation:
   width × height × 4 bytes
@@ -263,6 +278,7 @@ Full buffer allocation:
 ```
 
 ### The Solution (v5.2)
+
 ```
 Tile-based rendering:
   1. Split image into 256×256 tiles
@@ -279,6 +295,7 @@ For a 10K×10K image:
 ```
 
 ### Seam Handling
+
 ```javascript
 // In halftone-tiled.js computeHalftoneTile()
 const TILE_SIZE = 256;
@@ -300,9 +317,10 @@ const padY1 = Math.min(h, (tileY + 1) * TILE_SIZE + OVERLAP);
 ## Benchmarking & Telemetry
 
 ### Auto-Benchmark Wrapper
+
 ```javascript
 // In any engine:
-const bench = new window.PhotoneshopBenchmark.Benchmark('halftone-apply', pixelCount);
+const bench = new window.PhotoneshopBenchmark.Benchmark("halftone-apply", pixelCount);
 try {
   await applyHalftone(layer, params);
 } finally {
@@ -312,9 +330,10 @@ try {
 ```
 
 ### Regression Detection
+
 ```javascript
 // Compare baseline vs. current
-const baseline = loadBenchmarks('v5.0.json');
+const baseline = loadBenchmarks("v5.0.json");
 const current = window.PhotoneshopBenchmark.exportBenchmarks();
 const regressions = window.PhotoneshopBenchmark.detectRegressions(baseline, current, 10);
 

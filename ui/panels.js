@@ -4,13 +4,17 @@
  */
 
 function initTabs() {
-  document.querySelectorAll(".nav button").forEach(function(t) {
-    t.addEventListener("click", function(e) {
+  document.querySelectorAll(".nav button").forEach(function (t) {
+    t.addEventListener("click", function (e) {
       let n = parseInt(e.currentTarget.dataset.tab, 10);
       clearPreviewTimer(); // FIX 2.2: Clear timer on tab switch to prevent accumulation
       _currentTab = n; // defined in core/preview.js
-      document.querySelectorAll(".nav button").forEach(function(x) { x.classList.remove("on"); });
-      document.querySelectorAll(".pane").forEach(function(x) { x.classList.remove("on"); });
+      document.querySelectorAll(".nav button").forEach(function (x) {
+        x.classList.remove("on");
+      });
+      document.querySelectorAll(".pane").forEach(function (x) {
+        x.classList.remove("on");
+      });
       e.currentTarget.classList.add("on");
       let pane = document.getElementById("p" + n);
       if (pane) pane.classList.add("on");
@@ -29,24 +33,67 @@ function initTabs() {
 
 function initSliders() {
   let ALL_SLIDERS = [
-    "thresh","exposure","highlight","shadow","bright","contrast","blur","fade","distress","bleed","grain",
-    "lpi","htAngle","dotGain","halftone",
-    "wDensity","wChoke","wFeather","wHl",
-    "dtgInk","dtgWhite","dtgDetail",
-    "dtfCol","dtfInk","dtfSharp","sepChoke"
+    "thresh",
+    "exposure",
+    "highlight",
+    "shadow",
+    "bright",
+    "contrast",
+    "blur",
+    "fade",
+    "distress",
+    "bleed",
+    "grain",
+    "lpi",
+    "htAngle",
+    "dotGain",
+    "halftone",
+    "wDensity",
+    "wChoke",
+    "wFeather",
+    "wHl",
+    "dtgInk",
+    "dtgWhite",
+    "dtgDetail",
+    "dtfCol",
+    "dtfInk",
+    "dtfSharp",
+    "sepChoke",
   ];
   // Sliders across all live-preview tabs (2,3,6,9,10 — see EDIT_PANES in core/preview.js).
-  let LIVE_SLIDERS = ["thresh","exposure","highlight","shadow","bright","contrast","blur","fade",
-                      "distress","bleed","grain","lpi","htAngle","dotGain",
-                      "wDensity","wChoke","wFeather","wHl",
-                      "dtgInk","dtgWhite","dtgDetail","dtfCol","dtfInk","dtfSharp"];
+  let LIVE_SLIDERS = [
+    "thresh",
+    "exposure",
+    "highlight",
+    "shadow",
+    "bright",
+    "contrast",
+    "blur",
+    "fade",
+    "distress",
+    "bleed",
+    "grain",
+    "lpi",
+    "htAngle",
+    "dotGain",
+    "wDensity",
+    "wChoke",
+    "wFeather",
+    "wHl",
+    "dtgInk",
+    "dtgWhite",
+    "dtgDetail",
+    "dtfCol",
+    "dtfInk",
+    "dtfSharp",
+  ];
 
-  ALL_SLIDERS.forEach(function(id) {
-    let el  = document.getElementById(id);
+  ALL_SLIDERS.forEach(function (id) {
+    let el = document.getElementById(id);
     let out = document.getElementById(id + "V");
     if (!el) return;
     fillSlider(el); // defined in core/api.js
-    el.addEventListener("input", function() {
+    el.addEventListener("input", function () {
       if (out) out.textContent = el.value;
       fillSlider(el);
       if (LIVE_SLIDERS.indexOf(id) !== -1 && hasDoc() && EDIT_PANES[_currentTab]) {
@@ -56,39 +103,54 @@ function initSliders() {
   });
 
   let eff = document.getElementById("effect");
-  if (eff) eff.addEventListener("change", function() {
-    if (hasDoc() && EDIT_PANES[_currentTab]) schedulePreview();
-  });
+  if (eff)
+    eff.addEventListener("change", function () {
+      if (hasDoc() && EDIT_PANES[_currentTab]) schedulePreview();
+    });
 
   let htColor = document.getElementById("htColor");
-  if (htColor) htColor.addEventListener("input", function() {
-    if (hasDoc() && EDIT_PANES[_currentTab]) schedulePreview();
-  });
+  if (htColor)
+    htColor.addEventListener("input", function () {
+      if (hasDoc() && EDIT_PANES[_currentTab]) schedulePreview();
+    });
 }
 
 function initChips() {
-  ["#garmentChips","#colorChips","#htPattern","#ditherChips","#sepChips","#sepColorChips",
-   "#dtgChips","#dtfChips","#previewGarmentChips"].forEach(function(sel) {
-    document.querySelectorAll(sel + " button").forEach(function(c) {
-      c.addEventListener("click", function(e) {
-        document.querySelectorAll(sel + " button").forEach(function(x) { x.classList.remove("on"); });
+  [
+    "#garmentChips",
+    "#colorChips",
+    "#htPattern",
+    "#ditherChips",
+    "#sepChips",
+    "#sepColorChips",
+    "#dtgChips",
+    "#dtfChips",
+    "#previewGarmentChips",
+  ].forEach(function (sel) {
+    document.querySelectorAll(sel + " button").forEach(function (c) {
+      c.addEventListener("click", function (e) {
+        document.querySelectorAll(sel + " button").forEach(function (x) {
+          x.classList.remove("on");
+        });
         e.currentTarget.classList.add("on");
       });
     });
   });
   // CMYK is always exactly 4 fixed channels — hide the colour-count picker for it.
-  document.querySelectorAll("#sepChips button").forEach(function(b) {
-    b.addEventListener("click", function() {
+  document.querySelectorAll("#sepChips button").forEach(function (b) {
+    b.addEventListener("click", function () {
       let sec = document.getElementById("sepColorCountSec");
-      if (sec) sec.style.display = (b.dataset.sep === "cmyk") ? "none" : "";
+      if (sec) sec.style.display = b.dataset.sep === "cmyk" ? "none" : "";
     });
   });
 }
 
 function initLayerTarget() {
-  document.querySelectorAll(".target-btn").forEach(function(b) {
-    b.addEventListener("click", function(e) {
-      document.querySelectorAll(".target-btn").forEach(function(x) { x.classList.remove("on"); });
+  document.querySelectorAll(".target-btn").forEach(function (b) {
+    b.addEventListener("click", function (e) {
+      document.querySelectorAll(".target-btn").forEach(function (x) {
+        x.classList.remove("on");
+      });
       e.currentTarget.classList.add("on");
       setLayerTarget(e.currentTarget.dataset.target); // defined in core/history.js
       setStatus("Target: " + e.currentTarget.textContent.trim(), "info");
@@ -98,13 +160,13 @@ function initLayerTarget() {
 
 function initModeToggle() {
   let sw = document.getElementById("modeToggle");
-  bind("modeBasic", function() {
+  bind("modeBasic", function () {
     document.getElementById("modeBasic").classList.add("on");
     document.getElementById("modeAdvanced").classList.remove("on");
     if (sw) sw.classList.remove("right");
     setStatus("Basic mode", "info");
   });
-  bind("modeAdvanced", function() {
+  bind("modeAdvanced", function () {
     document.getElementById("modeAdvanced").classList.add("on");
     document.getElementById("modeBasic").classList.remove("on");
     if (sw) sw.classList.add("right");
@@ -115,7 +177,7 @@ function initModeToggle() {
 function initModal() {
   let overlay = document.getElementById("deepModal");
   if (overlay) {
-    overlay.addEventListener("click", function(e) {
+    overlay.addEventListener("click", function (e) {
       if (e.target === overlay) closeDeepModal(); // only close on backdrop click
     });
   }
@@ -130,22 +192,26 @@ async function init() {
   initModal();
 
   // Print Doctor (tab 1)
-  bind("runDoctor",    runPrintDoctor);      // ai/analysis.js
+  bind("runDoctor", runPrintDoctor); // ai/analysis.js
   bind("runProduction", runProductionCheck); // ai/analysis.js
-  bind("runDeep",    runDeepAnalysis); // ai/analysis.js
-  bind("deepClose",  closeDeepModal);  // ai/analysis.js
-  bind("fixUpscale", fixUpscale);   // ai/analysis.js
-  bind("fixResize",  fixResize);    // ai/analysis.js
-  bind("fixEnhance", fixEnhance);   // ai/analysis.js
-  bind("fixFlatten", fixFlatten);   // ai/analysis.js
-  bind("toggleRGB",  function() { setColourMode("RGB"); });   // ai/analysis.js
-  bind("toggleCMYK", function() { setColourMode("CMYK"); });  // ai/analysis.js
-  updateFixAvailability();          // ai/analysis.js — set initial button state
+  bind("runDeep", runDeepAnalysis); // ai/analysis.js
+  bind("deepClose", closeDeepModal); // ai/analysis.js
+  bind("fixUpscale", fixUpscale); // ai/analysis.js
+  bind("fixResize", fixResize); // ai/analysis.js
+  bind("fixEnhance", fixEnhance); // ai/analysis.js
+  bind("fixFlatten", fixFlatten); // ai/analysis.js
+  bind("toggleRGB", function () {
+    setColourMode("RGB");
+  }); // ai/analysis.js
+  bind("toggleCMYK", function () {
+    setColourMode("CMYK");
+  }); // ai/analysis.js
+  updateFixAvailability(); // ai/analysis.js — set initial button state
 
   // Design Studio (tab 2) — auto-start preview on first slider interaction via initSliders
-  bind("autoAnalyse",  autoDetectThreshold); // engines/vintage.js
-  bind("applyVintage", applyResult);         // core/preview.js
-  bind("resetAll",     resetAll);            // core/history.js
+  bind("autoAnalyse", autoDetectThreshold); // engines/vintage.js
+  bind("applyVintage", applyResult); // core/preview.js
+  bind("resetAll", resetAll); // core/history.js
 
   // Halftone (tab 3)
   bind("applyHalftone", applyHalftoneEngine); // engines/halftone.js
@@ -157,13 +223,13 @@ async function init() {
   bind("applyGarment", applyGarment); // engines/print.js
 
   // Colours (tab 4)
-  bind("reduceColors", splitChannels);  // engines/separation.js — real per-colour layers
-  bind("exportSpots",  exportSpots);    // engines/print.js
+  bind("reduceColors", splitChannels); // engines/separation.js — real per-colour layers
+  bind("exportSpots", exportSpots); // engines/print.js
 
   // Separation (tab 5)
-  bind("autoSeparate",  autoSeparate);   // engines/separation.js — full CMYK/spot/sim-process auto pipeline
-  bind("shiftColors",   shiftColors);    // engines/print.js
-  bind("applyKnockout", applyKnockout);  // engines/print.js
+  bind("autoSeparate", autoSeparate); // engines/separation.js — full CMYK/spot/sim-process auto pipeline
+  bind("shiftColors", shiftColors); // engines/print.js
+  bind("applyKnockout", applyKnockout); // engines/print.js
 
   // White Ink (tab 6)
   bind("generateUnderbase", generateUnderbase); // engines/print.js
@@ -176,8 +242,8 @@ async function init() {
 
   // Export (tab 13)
   bind("exportScreen", exportScreen); // engines/print.js
-  bind("exportDTG",    exportDTG);    // engines/print.js
-  bind("exportDTF",    exportDTF);    // engines/print.js
+  bind("exportDTG", exportDTG); // engines/print.js
+  bind("exportDTF", exportDTF); // engines/print.js
 
   // Presets (tab 14) — all defined in presets/index.js
   bind("saveUserPreset", saveUserPreset);
@@ -185,9 +251,9 @@ async function init() {
   await loadPresets();
 
   // Footer tools
-  bind("undoLast",  undoLast);    // core/history.js
+  bind("undoLast", undoLast); // core/history.js
   bind("runDiagnostics", runDiagnostics); // core/diagnostics.js
-  bind("soloGroup", toggleSolo);  // core/history.js
+  bind("soloGroup", toggleSolo); // core/history.js
 
   setStatus("Photoneshop ready", "success");
 }
@@ -195,8 +261,14 @@ async function init() {
 // Use a Promise-based runner to handle async init cleanly
 (function run() {
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", function() { init().catch(function(e) { console.error("Photoneshop init error:", e); }); });
+    document.addEventListener("DOMContentLoaded", function () {
+      init().catch(function (e) {
+        console.error("Photoneshop init error:", e);
+      });
+    });
   } else {
-    init().catch(function(e) { console.error("Photoneshop init error:", e); });
+    init().catch(function (e) {
+      console.error("Photoneshop init error:", e);
+    });
   }
 })();

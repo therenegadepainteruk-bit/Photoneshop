@@ -134,9 +134,7 @@
   },
   "rules": {
     "no-undef": "error",
-    "no-unused-vars": [
-      "off"
-    ],
+    "no-unused-vars": ["off"],
     "no-dupe-keys": "error",
     "no-dupe-args": "error",
     "no-unreachable": "error",
@@ -153,8 +151,5 @@
     "no-setter-return": "error",
     "no-async-promise-executor": "error"
   },
-  "ignorePatterns": [
-    "node_modules/",
-    "icons/"
-  ]
+  "ignorePatterns": ["node_modules/", "icons/"]
 }
