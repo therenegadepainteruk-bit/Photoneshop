@@ -161,6 +161,40 @@ async function toggleSolo() {
   }
 }
 
+// Samples the currently visible pixels at a small target size in a single
+// getPixels() pass and returns both ink coverage and colour-cluster count —
+// shared by the footer's live coverage readout (updateCoverage(), below,
+// which only needs .inkPct) and Print Doctor's analysis (ai/analysis.js
+// runPrintDoctor(), which needs both), so neither duplicates the pixel read
+// or disagrees on what counts as "ink" (a pixel darker than mid-grey by
+// luminance() — core/api.js).
+async function samplePixelStats(size) {
+  let dark = 0,
+    total = 0;
+  let colorSet = {};
+  await modal("Photoneshop: coverage sample", async function () {
+    let px = await window.imaging.getPixels({ targetSize: { width: size, height: size } });
+    let buf = await px.imageData.getData();
+    let comps = px.imageData.components;
+    for (let i = 0; i < buf.length; i += comps) {
+      let r = buf[i],
+        g = buf[i + 1] || 0,
+        b = buf[i + 2] || 0;
+      let grey = comps >= 3 ? luminance(r, g, b) : r;
+      if (grey < 128) dark++;
+      colorSet[Math.round(r / 16) + "," + Math.round(g / 16) + "," + Math.round(b / 16)] = 1;
+      total++;
+    }
+    px.imageData.dispose();
+  });
+  return {
+    dark: dark,
+    total: total,
+    inkPct: total ? Math.round((dark / total) * 100) : 0,
+    colorCount: Object.keys(colorSet).length,
+  };
+}
+
 async function updateCoverage() {
   let out = document.getElementById("coverageVal");
   if (!out || !hasDoc()) return;
@@ -172,20 +206,8 @@ async function updateCoverage() {
       return;
     }
 
-    let ink = 0,
-      total = 0;
-    await modal("Photoneshop: coverage", async function () {
-      let px = await window.imaging.getPixels({ targetSize: { width: 120, height: 120 } });
-      let buf = await px.imageData.getData();
-      let comps = px.imageData.components;
-      for (let i = 0; i < buf.length; i += comps) {
-        let g = comps >= 3 ? (buf[i] + buf[i + 1] + buf[i + 2]) / 3 : buf[i];
-        if (g < 128) ink++;
-        total++;
-      }
-      px.imageData.dispose();
-    });
-    out.textContent = total ? Math.round((ink / total) * 100) + "%" : "—";
+    const r = await samplePixelStats(120);
+    out.textContent = r.total ? r.inkPct + "%" : "—";
   } catch (e) {
     /* non-critical */
   }

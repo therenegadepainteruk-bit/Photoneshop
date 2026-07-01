@@ -863,10 +863,7 @@ function renderUserPresets() {
 function initBuiltinCategoryChips() {
   document.querySelectorAll(".preset-cat-chip").forEach(function (c) {
     c.addEventListener("click", function (e) {
-      document.querySelectorAll(".preset-cat-chip").forEach(function (x) {
-        x.classList.remove("on");
-      });
-      e.currentTarget.classList.add("on");
+      selectOne(".preset-cat-chip", e.currentTarget); // core/api.js
       renderBuiltinPresets(e.currentTarget.dataset.cat);
     });
   });

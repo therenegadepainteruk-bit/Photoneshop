@@ -59,7 +59,7 @@ function computeHalftoneTile(srcBuf, srcWidth, srcHeight, srcDepth, tileX, tileY
       if (a < 10) continue;
 
       const tone =
-        srcDepth >= 3 ? Math.round((srcBuf[srcIdx] + srcBuf[srcIdx + 1] + srcBuf[srcIdx + 2]) / 3) : srcBuf[srcIdx];
+        srcDepth >= 3 ? Math.round(luminance(srcBuf[srcIdx], srcBuf[srcIdx + 1], srcBuf[srcIdx + 2])) : srcBuf[srcIdx];
 
       // Find nearest screen cell for this pixel
       const rx = x * cos + y * sin,

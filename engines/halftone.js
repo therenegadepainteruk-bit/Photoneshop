@@ -203,7 +203,7 @@ function computeHalftoneBuffer(
       const a = comps >= 4 ? srcBuf[p + 3] : 255;
       if (a < 10) continue;
       // Round tone to integer to prevent dot-radius jitter (fix 2.12)
-      const tone = comps >= 3 ? Math.round((srcBuf[p] + srcBuf[p + 1] + srcBuf[p + 2]) / 3) : srcBuf[p];
+      const tone = comps >= 3 ? Math.round(luminance(srcBuf[p], srcBuf[p + 1], srcBuf[p + 2])) : srcBuf[p];
       const dotR = (cellSize / 2) * maxRFactor * (1 - tone / 255) * amount;
       if (dotR <= 0) continue;
       const dotR2 = dotR * dotR;
@@ -348,7 +348,7 @@ function checkTonalVariation(buf, comps) {
     const a = comps >= 4 ? buf[i + 3] : 255;
     if (a < 10) continue;
     // FIX 2.12: Round tone to integer to prevent floating-point jitter affecting dot radius
-    const g = comps >= 3 ? Math.round((buf[i] + buf[i + 1] + buf[i + 2]) / 3) : buf[i];
+    const g = comps >= 3 ? Math.round(luminance(buf[i], buf[i + 1], buf[i + 2])) : buf[i];
     sum += g;
     sumSq += g * g;
     n++;

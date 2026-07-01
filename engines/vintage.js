@@ -73,7 +73,7 @@ async function autoDetectThreshold() {
       const comps = px.imageData.components;
       const histo = new Array(256).fill(0);
       for (let i = 0; i < buf.length; i += comps) {
-        const g = comps >= 3 ? Math.round(0.299 * buf[i] + 0.587 * buf[i + 1] + 0.114 * buf[i + 2]) : buf[i];
+        const g = comps >= 3 ? Math.round(luminance(buf[i], buf[i + 1], buf[i + 2])) : buf[i];
         histo[Math.min(255, g)]++;
       }
       px.imageData.dispose();

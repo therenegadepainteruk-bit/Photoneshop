@@ -128,6 +128,31 @@ function activeChip(group, attr, def) {
   return a ? a.dataset[attr] || a.textContent.trim() : def;
 }
 
+// Perceptually-weighted luminance (ITU-R BT.601 — the same weighting
+// Photoshop's own grayscale/desaturate conversion uses), the single source of
+// truth for "how dark is this pixel" everywhere in the plugin. Previously five
+// call sites averaged (r+g+b)/3 instead (equal-weighting green and blue with
+// red, which reads noticeably lighter/darker than Photoshop's own grayscale
+// for saturated colours) while only auto-threshold used the weighted formula —
+// ink coverage, halftone tone-sampling, and auto-threshold now all agree on
+// what "dark" means. Identical to unweighted averaging for true greys
+// (r===g===b), since the weights sum to 1.0, so this does not change output
+// for already-greyscale/monochrome artwork.
+function luminance(r, g, b) {
+  return 0.299 * r + 0.587 * g + 0.114 * b;
+}
+
+// Selects exactly one element within a group: adds "on" to el, removes "on"
+// from every sibling matched by groupSelector. The common half of every
+// chip/tab/segmented-control click handler in this plugin (previously
+// reimplemented inline at each call site).
+function selectOne(groupSelector, el) {
+  document.querySelectorAll(groupSelector).forEach(function (x) {
+    x.classList.remove("on");
+  });
+  if (el) el.classList.add("on");
+}
+
 // ---- op builders (used by all engines) ----
 function opBright(b, c) {
   return { _obj: "brightnessEvent", brightness: Math.round(b), center: Math.round(c), useLegacy: false };

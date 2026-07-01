@@ -9,15 +9,9 @@ function initTabs() {
       let n = parseInt(e.currentTarget.dataset.tab, 10);
       clearPreviewTimer(); // FIX 2.2: Clear timer on tab switch to prevent accumulation
       _currentTab = n; // defined in core/preview.js
-      document.querySelectorAll(".nav button").forEach(function (x) {
-        x.classList.remove("on");
-      });
-      document.querySelectorAll(".pane").forEach(function (x) {
-        x.classList.remove("on");
-      });
-      e.currentTarget.classList.add("on");
+      selectOne(".nav button", e.currentTarget); // core/api.js
       let pane = document.getElementById("p" + n);
-      if (pane) pane.classList.add("on");
+      selectOne(".pane", pane); // core/api.js
       let bar = document.getElementById("applyBar");
       if (bar) bar.classList.toggle("hide", !EDIT_PANES[n]);
       let body = document.querySelector(".body");
@@ -131,10 +125,7 @@ function initChips() {
   ].forEach(function (sel) {
     document.querySelectorAll(sel + " button").forEach(function (c) {
       c.addEventListener("click", function (e) {
-        document.querySelectorAll(sel + " button").forEach(function (x) {
-          x.classList.remove("on");
-        });
-        e.currentTarget.classList.add("on");
+        selectOne(sel + " button", e.currentTarget); // core/api.js
       });
     });
   });
@@ -150,10 +141,7 @@ function initChips() {
 function initLayerTarget() {
   document.querySelectorAll(".target-btn").forEach(function (b) {
     b.addEventListener("click", function (e) {
-      document.querySelectorAll(".target-btn").forEach(function (x) {
-        x.classList.remove("on");
-      });
-      e.currentTarget.classList.add("on");
+      selectOne(".target-btn", e.currentTarget); // core/api.js
       setLayerTarget(e.currentTarget.dataset.target); // defined in core/history.js
       setStatus("Target: " + e.currentTarget.textContent.trim(), "info");
     });
@@ -167,10 +155,7 @@ function initLayerTarget() {
 function initDTStudio() {
   document.querySelectorAll("#dtModeChips button").forEach(function (b) {
     b.addEventListener("click", function (e) {
-      document.querySelectorAll("#dtModeChips button").forEach(function (x) {
-        x.classList.remove("on");
-      });
-      e.currentTarget.classList.add("on");
+      selectOne("#dtModeChips button", e.currentTarget); // core/api.js
       let mode = e.currentTarget.dataset.dtmode;
       setDTMode(mode); // engines/print.js
       document.querySelectorAll(".dt-dtg-only").forEach(function (el) {

@@ -57,6 +57,8 @@ window.PhotoneshopInit = (function () {
       "hexToRgb",
       "fillSlider",
       "setSlider",
+      "luminance",
+      "selectOne",
     ],
     "core/preview.js": [
       "schedulePreview",
@@ -73,6 +75,7 @@ window.PhotoneshopInit = (function () {
       "stampInGroup",
       "runNonDestructive",
       "resetAll",
+      "samplePixelStats",
     ],
     "core/diagnostics.js": ["runDiagnostics"],
     "engines/vintage.js": ["buildPipeline", "autoDetectThreshold"],

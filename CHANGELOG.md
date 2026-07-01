@@ -1,5 +1,57 @@
 # Changelog
 
+## v5.3.2 — Audit Phase 0: grayscale consistency, dedup, one bad descriptor key
+
+Executes the 4 "safest, no visible behaviour change" items from a full read-only
+plugin audit (UI inventory, every batchPlay/executeAsModal call site, Spectrum/
+native-UXP replacement candidates, event-usage review, duplication, deprecated
+APIs). Phases 1+ (export-function dedup, debounce cleanup, native PS event
+listeners, Spectrum Web Components migration, the dual-Apply-button
+architecture) are intentionally not part of this change.
+
+### Changed
+
+- **Standardised grayscale/luminance on one formula everywhere.** Five call
+  sites (`core/history.js` coverage, `engines/halftone.js` ×2, `ai/analysis.js`
+  ×2, `engines/halftone-tiled.js`) averaged `(r+g+b)/3`; only `engines/vintage.js`'s
+  Otsu auto-threshold used the perceptually-correct ITU-R BT.601 weighting
+  Photoshop's own grayscale conversion uses. New shared `luminance(r,g,b)`
+  helper in `core/api.js` is now the single source of truth, used by all 6
+  sites (plus the edge-density Sobel-proxy in `runDeepAnalysis()`, a 7th spot
+  using the same unweighted formula found while making this change).
+  **Real effect:** for genuinely coloured artwork, halftone tone-sampling, ink
+  coverage %, and Deep Analysis's histogram/edge stats will shift slightly
+  (more accurately) versus before; identical output for already-greyscale
+  artwork, since the weights sum to 1.0. The existing halftone functional test
+  uses a grey gradient, so it could not have caught this either way — verified
+  manually that the formula swap is the only change to `computeHalftoneBuffer`'s
+  tone input.
+- **Deduplicated ink-coverage pixel sampling.** `core/history.js`'s footer
+  readout and `ai/analysis.js`'s Print Doctor each independently sampled
+  pixels and counted dark ones. New shared `samplePixelStats(size)` in
+  `core/history.js` does the one `getPixels()` pass and returns both ink % and
+  colour-cluster count; each caller takes only what it needs.
+- **Fixed a wrong batchPlay descriptor key.** Both `imageSize` calls in
+  `ai/analysis.js` (`fixUpscale`/`fixResize`) set `interfaceIconFrameDimmed`
+  for the resample method — that key belongs to gradient descriptors (used
+  correctly elsewhere, `engines/print.js`'s palette-shift gradient map) and
+  was almost certainly copy-pasted; Photoshop was silently ignoring it and
+  falling back to its own default interpolation instead of the intended
+  "Automatic". Corrected to `interpolationMethod`.
+- **Extracted the repeated "select one of a button group" pattern.** New
+  shared `selectOne(groupSelector, el)` in `core/api.js` replaces five
+  hand-duplicated `querySelectorAll(...).forEach(remove "on"); add "on"`
+  blocks across `ui/panels.js` (tab nav, generic chip groups, layer-target
+  strip, DT Studio mode chips) and `presets/index.js` (preset category chips).
+
+### Tests
+
+- All 41 existing Vitest tests still pass unmodified — the halftone functional
+  test's synthetic source is a pure grey gradient, so the luminance formula
+  change doesn't (and shouldn't) alter its assertions.
+- `core/init-guard.js`'s `assertReady()` load-bearing-globals list updated for
+  the two new `core/api.js` exports and one new `core/history.js` export.
+
 ## v5.3.1 — Migrated the test suite to Vitest
 
 The custom 27KB `test-suite.js` (hand-rolled `test()`/`assert()` harness) is

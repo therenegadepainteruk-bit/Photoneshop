@@ -58,30 +58,15 @@ async function runPrintDoctor() {
       score -= 0.5;
     }
 
-    // 4. INK COVERAGE (pixel sample)
+    // 4. INK COVERAGE (pixel sample) — shared with the footer's live coverage
+    // readout (core/history.js samplePixelStats()), so both agree on what
+    // counts as "ink" and neither reimplements the pixel-sampling loop.
     let inkCoverage = 0;
     let colorVariance = 0;
     try {
-      await modal("Photoneshop: coverage sample", async function () {
-        let px = await window.imaging.getPixels({ targetSize: { width: 200, height: 200 } });
-        let buf = await px.imageData.getData();
-        let comps = px.imageData.components;
-        let dark = 0,
-          total = 0;
-        let colorSet = {};
-        for (let i = 0; i < buf.length; i += comps) {
-          let r = buf[i],
-            g = buf[i + 1] || 0,
-            b = buf[i + 2] || 0;
-          let grey = comps >= 3 ? (r + g + b) / 3 : r;
-          if (grey < 128) dark++;
-          colorSet[Math.round(r / 16) + "," + Math.round(g / 16) + "," + Math.round(b / 16)] = 1;
-          total++;
-        }
-        px.imageData.dispose();
-        inkCoverage = total ? Math.round((dark / total) * 100) : 0;
-        colorVariance = Object.keys(colorSet).length;
-      });
+      const stats = await samplePixelStats(200);
+      inkCoverage = stats.inkPct;
+      colorVariance = stats.colorCount;
     } catch (e) {
       /* pixel sampling failed — skip coverage */
     }
@@ -221,7 +206,7 @@ async function fixUpscale() {
           width: { _unit: "distanceUnit", _value: widthIn * 300 },
           height: { _unit: "distanceUnit", _value: heightIn * 300 },
           resolution: { _unit: "densityUnit", _value: 300 },
-          interfaceIconFrameDimmed: { _enum: "interpolationType", _value: "automaticInterpolation" },
+          interpolationMethod: { _enum: "interpolationType", _value: "automaticInterpolation" },
         },
       ]);
     });
@@ -254,7 +239,7 @@ async function fixResize() {
           width: { _unit: "distanceUnit", _value: w },
           height: { _unit: "distanceUnit", _value: h },
           constrainProportions: true,
-          interfaceIconFrameDimmed: { _enum: "interpolationType", _value: "automaticInterpolation" },
+          interpolationMethod: { _enum: "interpolationType", _value: "automaticInterpolation" },
         },
       ]);
     });
@@ -405,7 +390,7 @@ async function runDeepAnalysis() {
       let r = buf[i],
         g = buf[i + 1] || 0,
         b = buf[i + 2] || 0;
-      let grey = comps >= 3 ? Math.round((r + g + b) / 3) : r;
+      let grey = comps >= 3 ? Math.round(luminance(r, g, b)) : r;
       histo[grey]++;
       if (grey <= 2) pureBlack++;
       if (grey >= 253) pureWhite++;
@@ -438,9 +423,9 @@ async function runDeepAnalysis() {
         let idx = (y * w + x) * step;
         let idxR = idx + step; // right neighbour
         let idxD = idx + w * step; // down neighbour
-        let g0 = (buf[idx] + buf[idx + 1] + buf[idx + 2]) / 3;
-        let gR = (buf[idxR] + buf[idxR + 1] + buf[idxR + 2]) / 3;
-        let gD = (buf[idxD] + buf[idxD + 1] + buf[idxD + 2]) / 3;
+        let g0 = luminance(buf[idx], buf[idx + 1], buf[idx + 2]);
+        let gR = luminance(buf[idxR], buf[idxR + 1], buf[idxR + 2]);
+        let gD = luminance(buf[idxD], buf[idxD + 1], buf[idxD + 2]);
         edgeSum += Math.abs(g0 - gR) + Math.abs(g0 - gD);
         edgeSamples++;
       }
