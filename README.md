@@ -1,4 +1,4 @@
-# Photoneshop v5.4.9
+# Photoneshop v5.4.10
 
 Photoshop UXP plugin for DTF / DTG / screen-print garment workflows.
 
@@ -25,9 +25,9 @@ works again (restored to the v5.0 functional behaviour) and is now instrumented.
 
 ## Tests — `npm test` (Vitest)
 
-First time: `npm install` (installs Vitest + ESLint + Prettier as dev tooling; the
-plugin itself has zero runtime dependencies — Photoshop's UXP host never touches
-`node_modules`).
+First time: `npm install` (installs Vitest + ESLint + Prettier + TypeScript + archiver
+as dev tooling; the plugin itself has zero runtime dependencies — Photoshop's UXP host
+never touches `node_modules`).
 
 - `npm test` — runs the real test suite once (`vitest run`)
 - `npm run test:watch` — Vitest's interactive watch mode, for local development
@@ -35,6 +35,16 @@ plugin itself has zero runtime dependencies — Photoshop's UXP host never touch
 - `npm run lint` — ESLint, checks for undefined references, dead code, and other real bug patterns
 - `npm run format:check` — Prettier, reports style differences without changing anything
 - `npm run format` — Prettier, rewrites files to the configured style (large diff — run deliberately, not part of normal commits)
+- `npm run typecheck` (or `npx tsc --noEmit`) — TypeScript `checkJs` over `core/`, `engines/`,
+  `ai/`, `presets/`, `ui/` against the real shipped `.js` files (no build step, no `.ts` files —
+  see the v5.4.10 note below for how a plain-script, no-bundler codebase gets type-checked at all)
+- `npm run build` — zips the shipped plugin files (`manifest.json`, `index.html`, `icons/`,
+  `core/`, `engines/`, `ai/`, `presets/`, `ui/`) into `dist/photoneshop.zip` (gitignored);
+  not required to install/run the plugin (see "Install" below), just a packaged artifact +
+  CI package-size tracking
+
+`.github/workflows/ci.yml` runs lint → format:check → typecheck → test → build → package
+size report on every push/PR.
 
 The suite lives in `test/*.test.js` (standard Vitest `describe`/`it`/`expect`) and
 loads the **actual shipped source files** (`core/*.js`, `engines/*.js`) into a Node
@@ -84,6 +94,42 @@ Folder-copy installs do not work; UXP requires sideloading via UDT.
 | Performance                                             | Live-preview coverage readout, halftone dot loops, colour-splitting nearest-centroid assignment, and Deep Analysis edge detection all had redundant Photoshop calls or repeated calculations removed; startup no longer blocks on a presets file read — see v5.4.8 note                                       |
 
 See `CHANGELOG.md` for the full, dated history of every change.
+
+## v5.4.10 note
+
+`.github/workflows/ci.yml` now runs lint, format:check, a TypeScript type-check, the
+test suite, and a build/package-size step, in that order, on every push and PR —
+previously it only ran format:check → lint → test.
+
+This is a plain-script, no-bundler codebase (see ARCHITECTURE.md and index.html) with
+no `.ts` files, so "type-check" here means TypeScript's `checkJs` reading the real
+`.js` files under `core/`, `engines/`, `ai/`, `presets/`, `ui/` directly (`tsconfig.json`,
+`noEmit: true`) — it never emits anything, it only reports type errors. Two things had
+to be taught to `tsc` that ESLint's own `.eslintrc.json` `globals` list already
+documents for the same reason: this project's files share one global scope at runtime
+(concatenated `<script>` tags, not modules), and a handful of values only ever exist as
+host-injected `window.x` assignments. `types/global.d.ts` restates both — the
+functions `core/api.js` defines at its top level (tsc treats that one file as an
+isolated module because it calls UXP's own `require("photoshop")`/`require("uxp")`,
+unlike every other file) and the genuinely external globals (`window.app`/`action`/
+`core`/`imaging`/`batchPlay`/`fs`, `performance.memory`, and reading `.value`/
+`.checked`/`.dataset`/etc. straight off DOM elements/event targets the way the rest of
+this codebase already does). Everything in there is typed `any` — there's no official
+UXP/Photoshop type package in use, so anything more specific would be a guess, not a
+verified type. `checkJs` still caught and fixed three real gaps in the plugin's own
+code along the way (`ai/analysis.js`'s `runDeepAnalysis`, `engines/halftone.js`'s
+`applyHalftoneEngine`, `engines/print.js`'s `buildWhiteInkPipeline` — all three were
+`let`/array declarations relying on TypeScript's control-flow inference across an
+`await modal(...)` callback boundary in a way it can't actually verify; each got an
+explicit `@type` JSDoc annotation, no behaviour change).
+
+Also added `npm run build` (there wasn't one before): zips the exact files Photoshop
+loads (`manifest.json`, `index.html`, `icons/`, `core/`, `engines/`, `ai/`, `presets/`,
+`ui/`) into `dist/photoneshop.zip` via `scripts/build.js` — no transform/minify/bundle,
+since none of that applies to a UXP-sideloaded plain-script plugin (see "Install"
+below, unchanged). CI reports the resulting zip's size on every run
+(`$GITHUB_STEP_SUMMARY`) so an unexpected size jump is visible without downloading the
+artifact.
 
 ## v5.4.9 note
 

@@ -525,7 +525,10 @@ async function applyHalftoneEngine() {
     // behind while this action starts its own separate edit.
     if (_previewActive || _sourceReady) await cancelPreview();
     const angle = parseInt(val("htAngle"), 10) || 45;
-    let variation, layerId;
+    /** @type {any} */
+    let variation;
+    /** @type {any} */
+    let layerId;
     await modal("Halftone", async function () {
       layerId = await bpCreateLayer([{ _obj: "mergeVisible", duplicate: true }]);
       if (layerId == null) throw new Error("Could not create halftone layer");

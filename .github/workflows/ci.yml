@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   checks:
-    name: Format check, lint, and test
+    name: Lint, format check, type check, test, and build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -25,11 +25,25 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Check formatting
-        run: npm run format:check
-
       - name: Lint
         run: npm run lint
 
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Type check
+        run: npx tsc --noEmit
+
       - name: Run tests
         run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Package size report
+        run: |
+          SIZE_BYTES=$(stat -c%s dist/photoneshop.zip)
+          SIZE_KB=$(awk "BEGIN { printf \"%.1f\", $SIZE_BYTES / 1024 }")
+          echo "photoneshop.zip: ${SIZE_KB} KB (${SIZE_BYTES} bytes)"
+          echo "### Package size" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`dist/photoneshop.zip\`: **${SIZE_KB} KB** (${SIZE_BYTES} bytes)" >> "$GITHUB_STEP_SUMMARY"

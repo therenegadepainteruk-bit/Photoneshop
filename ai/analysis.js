@@ -397,7 +397,10 @@ async function runDeepAnalysis() {
 
     setBar(15);
 
-    let buf, comps;
+    /** @type {any} */
+    let buf;
+    /** @type {any} */
+    let comps;
     await modal("Photoneshop: deep scan", async function () {
       let px = await window.imaging.getPixels({ targetSize: { width: scanW, height: scanH } });
       buf = await px.imageData.getData();

@@ -76,6 +76,7 @@ function buildWhiteInkPipeline() {
   const choke = Math.max(0, Math.round(num("wChoke") / 3));
   const feather = Math.max(0, Math.round(num("wFeather") / 4));
   const hlBoost = num("wHl");
+  /** @type {any[]} */
   const cmds = [
     {
       _obj: "set",

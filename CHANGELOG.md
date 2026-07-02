@@ -1,5 +1,48 @@
 # Changelog
 
+## v5.4.10 — CI: lint, format, type-check, test, build, and package-size report
+
+`.github/workflows/ci.yml` now runs, in order: `npm ci` → `npm run lint` →
+`npm run format:check` → `npx tsc --noEmit` → `npm test` → `npm run build` →
+package size report. Previously it only ran format:check → lint → test.
+
+- `tsconfig.json` — new. `checkJs`/`allowJs`/`noEmit` type-checks the real
+  shipped `.js` files under `core/`, `engines/`, `ai/`, `presets/`, `ui/`
+  directly (no `.ts` files, no bundler — matches this project's plain-script
+  architecture, see ARCHITECTURE.md).
+- `types/global.d.ts` — new. Ambient declarations for the same two gaps
+  `.eslintrc.json`'s `globals` list already documents for ESLint: (1)
+  `core/api.js`'s top-level functions, invisible to `tsc` from every other
+  file because `require("photoshop")`/`require("uxp")` makes tsc infer it as
+  an isolated module (every other file has no `import`/`export`/`require`
+  and stays correctly global-scoped); (2) values that only ever exist as
+  `window.x = ...` assignments (`window.app`/`action`/`core`/`imaging`/
+  `batchPlay`/`fs`, `performance.memory`) plus `.value`/`.checked`/
+  `.dataset`/etc. read straight off DOM elements/event targets. Everything
+  is typed `any` — no official UXP/Photoshop type package exists to check
+  against, so anything more specific would be guessed, not verified.
+- `ai/analysis.js` (`runDeepAnalysis`), `engines/halftone.js`
+  (`applyHalftoneEngine`), `engines/print.js` (`buildWhiteInkPipeline`) —
+  three real gaps `checkJs` found and fixed: each had a `let`/array
+  declaration relying on control-flow inference across an
+  `await modal(...)` callback boundary that `tsc` can't actually verify
+  (`variation`/`layerId`/`buf`/`comps` assigned only inside the callback;
+  `cmds` pushed heterogeneous batchPlay descriptor shapes onto an array
+  typed from its first two literal elements). Each got an explicit
+  `@type` JSDoc annotation — no behaviour change, confirmed by the
+  unchanged 98/98 test pass.
+- `scripts/build.js` + `npm run build` — new; there was no build script
+  before. Zips the exact files Photoshop loads (`manifest.json`,
+  `index.html`, `icons/`, `core/`, `engines/`, `ai/`, `presets/`, `ui/`)
+  into `dist/photoneshop.zip` (gitignored) via `archiver`. No transform,
+  minify, or bundling — none of that applies to a UXP-sideloaded
+  plain-script plugin; installation is unchanged (see README "Install").
+- CI's new package-size-report step writes the resulting zip's size to
+  `$GITHUB_STEP_SUMMARY` on every run.
+- New devDependencies: `typescript`, `archiver`. Plugin runtime
+  dependencies remain zero — Photoshop's UXP host never touches
+  `node_modules`.
+
 ## v5.4.9 — Theme-aware CSS: panel chrome now matches Photoshop's active UI theme
 
 Spectrum Web Components (since v5.4.0) already gave the interactive controls
