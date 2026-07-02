@@ -174,5 +174,5 @@
     "no-setter-return": "error",
     "no-async-promise-executor": "error"
   },
-  "ignorePatterns": ["node_modules/", "icons/", "coverage/", "dist/"]
+  "ignorePatterns": ["node_modules/", "icons/", "coverage/", "dist/", "**/*.d.ts", "**/*.css"]
 }
