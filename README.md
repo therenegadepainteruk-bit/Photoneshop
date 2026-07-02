@@ -1,4 +1,4 @@
-# Photoneshop v5.4.10
+# Photoneshop v5.4.11
 
 Photoshop UXP plugin for DTF / DTG / screen-print garment workflows.
 
@@ -94,6 +94,29 @@ Folder-copy installs do not work; UXP requires sideloading via UDT.
 | Performance                                             | Live-preview coverage readout, halftone dot loops, colour-splitting nearest-centroid assignment, and Deep Analysis edge detection all had redundant Photoshop calls or repeated calculations removed; startup no longer blocks on a presets file read — see v5.4.8 note                                       |
 
 See `CHANGELOG.md` for the full, dated history of every change.
+
+## v5.4.11 note
+
+The v5.4.10 CI additions (see below) exposed a real, pre-existing gap: this
+repo's `engines.node`/CI Node version had been pinned to `>=18`/`"18"` since
+early on, and a later changelog entry deliberately kept `vitest` on the 3.x
+line specifically to preserve that — but `vitest@3.2.6`'s own dependency
+range (`vite: ^5.0.0 || ^6.0.0 || ^7.0.0-0`) let npm resolve the newest
+matching `vite`, `7.3.6`, which independently requires Node `^20.19.0 ||
+
+> =22.12.0`. That drift had already broken Node 18 compatibility before this
+version — it just went uncaught because every local `npm test`run in this
+project's history happened to run on a newer local Node, and this was the
+first time the CI workflow actually executed against GitHub's real Node 18
+runner (on PR #1).`npm test` failed outright there (`ERR_REQUIRE_ESM`loading`vitest.config.js`via`vite`'s ESM build under Node 18's CJS
+`require`).
+
+Node 18 reached end-of-life well before now, so rather than pin `vite` to an
+old major to keep chasing Node 18 support, `.github/workflows/ci.yml`'s
+`node-version` and `package.json`'s `engines.node` both moved to
+`>=20.19` — the actual floor `vite@7.3.6` requires, and comfortably below
+the Node 22 this project's own local development has been running on all
+along.
 
 ## v5.4.10 note
 

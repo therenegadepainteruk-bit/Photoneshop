@@ -1,6 +1,6 @@
 {
   "name": "photoneshop",
-  "version": "5.4.10",
+  "version": "5.4.11",
   "private": true,
   "description": "Photoshop UXP plugin for DTF / DTG / screen-print garment workflows.",
   "scripts": {
@@ -34,7 +34,7 @@
   },
   "homepage": "https://github.com/therenegadepainteruk-bit/Photoneshop#readme",
   "engines": {
-    "node": ">=18"
+    "node": ">=20.19"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^3.2.6",

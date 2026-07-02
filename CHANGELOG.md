@@ -1,5 +1,32 @@
 # Changelog
 
+## v5.4.11 — Fix CI: bump Node 18 → 20.19+ (vite 7 dropped Node 18 support)
+
+The v5.4.10 CI additions ran this workflow against GitHub's actual Node 18
+runner for the first time (on PR #1) and it failed immediately: `npm test`
+couldn't even load `vitest.config.js` (`ERR_REQUIRE_ESM`, requiring `vite`'s
+ESM build from a CJS context under Node 18).
+
+Root cause: an earlier changelog entry deliberately kept `vitest` pinned to
+the 3.x line specifically to preserve this repo's declared Node 18 minimum
+(4.x requires Node `^20 || ^22 || >=24`). That reasoning didn't account for
+`vite` itself — `vitest@3.2.6`'s own dependency range
+(`^5.0.0 || ^6.0.0 || ^7.0.0-0`) let npm resolve the newest matching `vite`,
+`7.3.6`, which independently requires Node `^20.19.0 || >=22.12.0`. Node 18
+support had already silently broken before this version; it was never
+caught because every local test run in this project's history happened to
+run on a newer local Node.
+
+- `.github/workflows/ci.yml` — `node-version: "18"` → `"20"`.
+- `package.json` — `engines.node: ">=18"` → `">=20.19"` (the actual floor
+  `vite@7.3.6` requires).
+
+Node 18 reached end-of-life well before now, so this bumps the floor rather
+than pinning `vite` to an old major to keep chasing Node 18 compatibility.
+No dependency versions changed — `package-lock.json`'s `vite@7.3.6`
+resolution is untouched, it's now simply within the declared/tested Node
+range.
+
 ## v5.4.10 — CI: lint, format, type-check, test, build, and package-size report
 
 `.github/workflows/ci.yml` now runs, in order: `npm ci` → `npm run lint` →
