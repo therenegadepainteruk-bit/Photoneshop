@@ -1,4 +1,4 @@
-# Photoneshop v5.4.8
+# Photoneshop v5.4.9
 
 Photoshop UXP plugin for DTF / DTG / screen-print garment workflows.
 
@@ -66,24 +66,52 @@ Folder-copy installs do not work; UXP requires sideloading via UDT.
 
 ## Status (honest)
 
-| Area                                                    | State                                                                                                                                                                                                                                                                   |
-| ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Apply halftone (core feature)                           | **Working**, instrumented, regression-guarded                                                                                                                                                                                                                           |
-| Large-image path                                        | Verified band-chunked path in `computeHalftoneBufferChunked`; single output allocation, practical ceiling ~100 MP                                                                                                                                                       |
-| Tiled renderer (`engines/halftone-tiled.js`)            | **Experimental, unwired.** Real tile math is unit-tested; `applyHalftoneTiled` throws (no real pixel I/O yet)                                                                                                                                                           |
-| Screen Studio tab (was "Separation")                    | **Working** — channel split + simultaneous per-channel halftone; advanced spread/vector crop marks planned                                                                                                                                                              |
-| DT Studio tab (was "DTG" + "DTF")                       | **Working** — combined DTG/DTF optimisation with an opt-in halftone-screen finishing step (real pixel renderer)                                                                                                                                                         |
-| Garment Preview tab                                     | Stub                                                                                                                                                                                                                                                                    |
-| UI                                                      | 14 tabs, native UXP Spectrum elements (`sp-*`) — **not yet verified in a live Photoshop panel**, see v5.4.0 note                                                                                                                                                        |
-| Photoshop-op wrapping (`executeAsModal`)                | Every document-modifying action audited; all wrap in one atomic modal scope, live-preview races guarded                                                                                                                                                                 |
-| Photoshop-op batching (`batchPlay`)                     | Redundant sequential calls folded into single multi-descriptor calls where safe (see v5.4.2 note)                                                                                                                                                                       |
-| Native event listeners (`core/events.js`)               | Coverage/fix-availability/RGB-CMYK readouts sync on PS select/historyStateChanged/open/close — see v5.4.3 note, **not yet verified in a live Photoshop panel**                                                                                                          |
-| Pixel sampling (Colours/Screen Studio colour detection) | Reads the composite directly via the Imaging API — no throwaway full-resolution stamp layer (see v5.4.4 note)                                                                                                                                                           |
-| Undo / History panel                                    | Live-preview sessions coalesce to one named entry ("Apply Threshold", "Generate Halftone", …) instead of one per drag tick — see v5.4.5 note, **highest-risk change to verify live, see note**                                                                          |
-| Storage (presets, UI state, recent folders)             | Presets: unchanged native `presets.json` file. UI state (last tab, layer target, DT mode, preset category) and per-export "recent folder" memory now use native `localStorage`/persistent tokens — see v5.4.6 note                                                      |
-| Performance                                             | Live-preview coverage readout, halftone dot loops, colour-splitting nearest-centroid assignment, and Deep Analysis edge detection all had redundant Photoshop calls or repeated calculations removed; startup no longer blocks on a presets file read — see v5.4.8 note |
+| Area                                                    | State                                                                                                                                                                                                                                                                                                         |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Apply halftone (core feature)                           | **Working**, instrumented, regression-guarded                                                                                                                                                                                                                                                                 |
+| Large-image path                                        | Verified band-chunked path in `computeHalftoneBufferChunked`; single output allocation, practical ceiling ~100 MP                                                                                                                                                                                             |
+| Tiled renderer (`engines/halftone-tiled.js`)            | **Experimental, unwired.** Real tile math is unit-tested; `applyHalftoneTiled` throws (no real pixel I/O yet)                                                                                                                                                                                                 |
+| Screen Studio tab (was "Separation")                    | **Working** — channel split + simultaneous per-channel halftone; advanced spread/vector crop marks planned                                                                                                                                                                                                    |
+| DT Studio tab (was "DTG" + "DTF")                       | **Working** — combined DTG/DTF optimisation with an opt-in halftone-screen finishing step (real pixel renderer)                                                                                                                                                                                               |
+| Garment Preview tab                                     | Stub                                                                                                                                                                                                                                                                                                          |
+| UI                                                      | 14 tabs, native UXP Spectrum elements (`sp-*`); custom CSS chrome (backgrounds/text/borders/font-size) now wired to Photoshop's own `--uxp-host-*` theme variables so it tracks the host's darkest/dark/medium/light theme live — **not yet verified in a live Photoshop panel**, see v5.4.0 and v5.4.9 notes |
+| Photoshop-op wrapping (`executeAsModal`)                | Every document-modifying action audited; all wrap in one atomic modal scope, live-preview races guarded                                                                                                                                                                                                       |
+| Photoshop-op batching (`batchPlay`)                     | Redundant sequential calls folded into single multi-descriptor calls where safe (see v5.4.2 note)                                                                                                                                                                                                             |
+| Native event listeners (`core/events.js`)               | Coverage/fix-availability/RGB-CMYK readouts sync on PS select/historyStateChanged/open/close — see v5.4.3 note, **not yet verified in a live Photoshop panel**                                                                                                                                                |
+| Pixel sampling (Colours/Screen Studio colour detection) | Reads the composite directly via the Imaging API — no throwaway full-resolution stamp layer (see v5.4.4 note)                                                                                                                                                                                                 |
+| Undo / History panel                                    | Live-preview sessions coalesce to one named entry ("Apply Threshold", "Generate Halftone", …) instead of one per drag tick — see v5.4.5 note, **highest-risk change to verify live, see note**                                                                                                                |
+| Storage (presets, UI state, recent folders)             | Presets: unchanged native `presets.json` file. UI state (last tab, layer target, DT mode, preset category) and per-export "recent folder" memory now use native `localStorage`/persistent tokens — see v5.4.6 note                                                                                            |
+| Performance                                             | Live-preview coverage readout, halftone dot loops, colour-splitting nearest-centroid assignment, and Deep Analysis edge detection all had redundant Photoshop calls or repeated calculations removed; startup no longer blocks on a presets file read — see v5.4.8 note                                       |
 
 See `CHANGELOG.md` for the full, dated history of every change.
+
+## v5.4.9 note
+
+The interactive controls have used native Spectrum Web Components (`sp-*`)
+since v5.4.0, but the custom CSS around them (`ui/styles.css`) was still a
+fixed, hardcoded dark palette (`--bg: #0c0c0d`, etc.) and a generic system
+font stack — it looked the same regardless of which of Photoshop's four UI
+brightness themes (darkest/dark/medium/light) the user had selected, and
+didn't use Photoshop's own typeface. `--fg`, `--fg2`, `--fg3`, `--bg`, and
+`--line` now resolve through Photoshop's own UXP-injected theme variables
+(`--uxp-host-text-color`, `--uxp-host-text-color-secondary`,
+`--uxp-host-label-text-color`, `--uxp-host-background-color`,
+`--uxp-host-border-color`), and the base font size follows
+`--uxp-host-font-size`, so the panel's base colours and text size track
+whichever theme/UI-scale the user has active, live, exactly like Photoshop's
+own panels — the old hardcoded hex values are kept only as `var()` fallbacks
+for non-UXP contexts (e.g. a plain-browser dev preview) where those
+variables don't exist. The font stack now leads with `adobe-clean`/
+`adobe-clean-ux` (Photoshop's own UI typeface) ahead of the previous
+system-font fallback. UXP doesn't expose a tonal ramp for elevated "card"
+surfaces (`--bg2`/`--bg3`/`--bg4`, used by preset rows, score cards, the
+diagnostics log, etc.) — only single background/text/border tones — so
+those stay fixed dark values with a `prefers-color-scheme: light`/`lightest`
+override so cards still read correctly against a light host theme. Not yet
+verified in a live Photoshop panel (see the UI row above); the `--uxp-host-*`
+variable names are corroborated across Adobe's own UXP theme-awareness
+guide and multiple independent developer references, cross-referenced
+before use per this project's usual practice for new UXP API surfaces.
 
 ## v5.4.8 note
 

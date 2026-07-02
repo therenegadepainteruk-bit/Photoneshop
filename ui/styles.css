@@ -5,20 +5,37 @@
   -webkit-user-select: none;
   user-select: none;
 }
+/* Base tokens map onto Photoshop's own UXP host CSS variables — injected by
+   the host at runtime and updated live if the user switches between its
+   four UI brightness themes (darkest/dark/medium/light) — so the panel's
+   background, text, borders and text size always match the surrounding
+   Photoshop chrome exactly, the same way Photoshop's own native panels do.
+   The literal hex values are fallbacks only, used outside a UXP host (e.g.
+   a plain-browser dev preview) where these variables aren't defined.
+   --bg2/--bg3/--bg4 (elevated "card" surfaces) have no host equivalent —
+   UXP only exposes one background/text/border tone, not a tonal ramp — so
+   they stay fixed, with a light-theme override below via prefers-color-scheme
+   (also host-provided) so cards still read correctly against a light base. */
 :root {
-  --fg: #f0f0f0;
-  --fg2: #8a8a8e;
-  --fg3: #52525a;
-  --fg4: #3a3a3e;
-  --bg: #0c0c0d;
+  --fg: var(--uxp-host-text-color, #f0f0f0);
+  --fg2: var(--uxp-host-text-color-secondary, #8a8a8e);
+  --fg3: var(--uxp-host-label-text-color, #52525a);
+  --bg: var(--uxp-host-background-color, #0c0c0d);
   --bg2: #141416;
   --bg3: #1c1c1f;
   --bg4: #252528;
-  --line: #2a2a2d;
+  --line: var(--uxp-host-border-color, #2a2a2d);
   --ok: #3ecf6a;
   --warn: #ffb020;
   --err: #ff5c5c;
-  --f: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  --f: adobe-clean, adobe-clean-ux, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: light), (prefers-color-scheme: lightest) {
+  :root {
+    --bg2: #e4e4e4;
+    --bg3: #ececec;
+    --bg4: #d6d6d6;
+  }
 }
 html,
 body {
@@ -28,7 +45,7 @@ body {
   background: var(--bg);
   color: var(--fg);
   font-family: var(--f);
-  font-size: 13px;
+  font-size: var(--uxp-host-font-size, 13px);
   -webkit-font-smoothing: antialiased;
 }
 .app {

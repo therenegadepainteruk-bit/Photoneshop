@@ -1,5 +1,40 @@
 # Changelog
 
+## v5.4.9 — Theme-aware CSS: panel chrome now matches Photoshop's active UI theme
+
+Spectrum Web Components (since v5.4.0) already gave the interactive controls
+Photoshop's native look "for free," but the surrounding custom CSS in
+`ui/styles.css` — page background, text colours, borders, base font size,
+and typography — was a fixed, hardcoded dark palette and a generic
+system-font stack, unrelated to whichever of Photoshop's four UI brightness
+themes (darkest/dark/medium/light) the user actually has active.
+
+- `ui/styles.css` — `--fg`/`--fg2`/`--fg3`/`--bg`/`--line` now resolve
+  through Photoshop's UXP-injected theme variables (`--uxp-host-text-color`,
+  `--uxp-host-text-color-secondary`, `--uxp-host-label-text-color`,
+  `--uxp-host-background-color`, `--uxp-host-border-color`), and the base
+  font size follows `--uxp-host-font-size` — the panel's base colours and
+  text size now track the host's live theme/UI-scale automatically, exactly
+  like Photoshop's own panels. The prior hardcoded hex values remain as
+  `var()` fallbacks for non-UXP contexts (e.g. a plain-browser dev preview).
+- Font stack now leads with `adobe-clean`/`adobe-clean-ux` (Photoshop's own
+  UI typeface) ahead of the previous system-font fallback chain.
+- UXP has no tonal ramp for elevated "card" surfaces (only single
+  background/text/border tones are exposed), so `--bg2`/`--bg3`/`--bg4`
+  (preset rows, score cards, the diagnostics log, etc.) stay fixed dark
+  values, with a `prefers-color-scheme: light`/`lightest` override added so
+  cards still read correctly against a light host theme instead of looking
+  inverted.
+- Removed `--fg4`, an unused leftover token (grepped: zero references
+  anywhere in the codebase besides its own declaration).
+
+`--uxp-host-*` variable names cross-referenced against Adobe's UXP
+theme-awareness guide and multiple independent developer references before
+use, per this project's usual practice for new UXP API surfaces. Not yet
+verified in a live Photoshop panel — see README "Status (honest)". No
+JS/behaviour changes; `npm run format:check`, `npm run lint`, and
+`npm test` (98/98) all still pass.
+
 ## v5.4.8 — Optimisation pass: fewer redundant PS calls, fewer redundant calculations, faster startup
 
 Profiled every hot path (live preview, startup, colour splitting, deep
