@@ -381,10 +381,12 @@ async function runDeepAnalysis() {
   openDeepModal();
   let body = document.getElementById("deepBody");
   if (body) {
+    // Plain CSS progress bar \u2014 sp-progressbar is not a built-in UXP widget
+    // (it rendered as nothing in a real panel).
     body.innerHTML =
       '<div class="deep-progress">' +
       '<div class="hint">Scanning artwork at high resolution\u2026</div>' +
-      '<sp-progressbar class="deep-progress-bar" id="deepBar" min="0" max="100" progress="0"></sp-progressbar>' +
+      '<div class="deep-progress-track"><div class="deep-progress-fill" id="deepBar"></div></div>' +
       "</div>";
   }
 
@@ -538,7 +540,7 @@ async function runDeepAnalysis() {
 
 function setBar(pct) {
   let bar = document.getElementById("deepBar");
-  if (bar) bar.progress = pct;
+  if (bar) bar.style.width = Math.max(0, Math.min(100, pct)) + "%";
 }
 
 function renderDeepResults(r) {

@@ -10,9 +10,51 @@
       <div class="hd">
         <div>
           <h1>Photoneshop</h1>
-          <p>Garment Print Platform · build 21 (Spectrum UI)</p>
+          <p>Garment print toolkit</p>
         </div>
       </div>
+
+      <!-- WORKFLOW NAVIGATION — two tiers of sp-action-button chips (a real,
+           supported UXP widget — sp-tabs is NOT in UXP's built-in widget set
+           and renders as dead inline text, which is why the old tab strip
+           showed all 14 labels as an unclickable list). Tier 1 is the print
+           workflow stage; tier 2 picks the tool within that stage. Each tool
+           chip maps to one of the same 14 panes (p1–p14) as before — pane
+           ids, control ids, and the live-preview architecture are unchanged. -->
+      <div class="nav">
+        <div class="nav-stages" id="navStages">
+          <sp-action-button selected data-stage="0">Check</sp-action-button>
+          <sp-action-button data-stage="1">Design</sp-action-button>
+          <sp-action-button data-stage="2">Screens</sp-action-button>
+          <sp-action-button data-stage="3">Print</sp-action-button>
+          <sp-action-button data-stage="4">Output</sp-action-button>
+        </div>
+        <div class="nav-tools on" id="stageTools0">
+          <sp-action-button quiet selected data-pane="1">Print Doctor</sp-action-button>
+          <sp-action-button quiet data-pane="7">Cleanup</sp-action-button>
+          <sp-action-button quiet data-pane="11">Production</sp-action-button>
+        </div>
+        <div class="nav-tools" id="stageTools1">
+          <sp-action-button quiet selected data-pane="2">Design Studio</sp-action-button>
+          <sp-action-button quiet data-pane="3">Halftone</sp-action-button>
+          <sp-action-button quiet data-pane="4">Colours</sp-action-button>
+        </div>
+        <div class="nav-tools" id="stageTools2">
+          <sp-action-button quiet selected data-pane="5">Separate</sp-action-button>
+          <sp-action-button quiet data-pane="6">White Ink</sp-action-button>
+        </div>
+        <div class="nav-tools" id="stageTools3">
+          <sp-action-button quiet selected data-pane="9">DTG / DTF</sp-action-button>
+          <sp-action-button quiet data-pane="8">Garment</sp-action-button>
+          <sp-action-button quiet data-pane="10">Preview</sp-action-button>
+        </div>
+        <div class="nav-tools" id="stageTools4">
+          <sp-action-button quiet selected data-pane="12">Export</sp-action-button>
+          <sp-action-button quiet data-pane="13">Presets</sp-action-button>
+          <sp-action-button quiet data-pane="14">Diagnostics</sp-action-button>
+        </div>
+      </div>
+
       <div class="body">
         <div class="target-strip">
           <span class="target-label">Target</span>
@@ -20,51 +62,6 @@
           <sp-action-button data-target="active">Active Layer</sp-action-button>
           <sp-action-button data-target="selection">Selection</sp-action-button>
         </div>
-
-        <sp-tabs id="navTabs" selected="1" quiet>
-          <sp-tab value="1"
-            ><div>Print Doctor<span class="tag">Analyse</span></div></sp-tab
-          >
-          <sp-tab value="2"
-            ><div>Design Studio<span class="tag">Create</span></div></sp-tab
-          >
-          <sp-tab value="3"
-            ><div>Halftone<span class="tag">Dots</span></div></sp-tab
-          >
-          <sp-tab value="4"
-            ><div>Colours<span class="tag">Reduce</span></div></sp-tab
-          >
-          <sp-tab value="5"
-            ><div>Screen Studio<span class="tag">Channels</span></div></sp-tab
-          >
-          <sp-tab value="6"
-            ><div>White Ink<span class="tag">Underbase</span></div></sp-tab
-          >
-          <sp-tab value="7"
-            ><div>Cleanup<span class="tag">Fix</span></div></sp-tab
-          >
-          <sp-tab value="8"
-            ><div>Garment<span class="tag">Fabric</span></div></sp-tab
-          >
-          <sp-tab value="9"
-            ><div>DT Studio<span class="tag">DTG/DTF</span></div></sp-tab
-          >
-          <sp-tab value="10"
-            ><div>Preview<span class="tag">Simulate</span></div></sp-tab
-          >
-          <sp-tab value="11"
-            ><div>Production<span class="tag">Output</span></div></sp-tab
-          >
-          <sp-tab value="12"
-            ><div>Export<span class="tag">Save</span></div></sp-tab
-          >
-          <sp-tab value="13"
-            ><div>Presets<span class="tag">Load/Save</span></div></sp-tab
-          >
-          <sp-tab value="14"
-            ><div>Diagnostics<span class="tag">Debug</span></div></sp-tab
-          >
-        </sp-tabs>
 
         <div class="pane on" id="p1">
           <div class="sec">
@@ -110,11 +107,13 @@
         </div>
 
         <!-- DEEP ANALYSIS DIALOG -->
+        <!-- sp-dialog is not a built-in UXP widget (it rendered with no card
+             chrome) — plain div styled by .modal-card instead. -->
         <div class="modal-overlay hide" id="deepModal">
-          <sp-dialog id="deepDialog" size="m">
+          <div class="modal-card" id="deepDialog">
             <div class="modal-head">
-              <sp-heading size="s">Deep Analysis</sp-heading>
-              <sp-action-button quiet id="deepClose" label="Close">×</sp-action-button>
+              <sp-heading size="S">Deep Analysis</sp-heading>
+              <sp-action-button quiet id="deepClose">×</sp-action-button>
             </div>
             <div class="modal-body" id="deepBody">
               <p class="hint">
@@ -122,7 +121,7 @@
                 settings, colour profile, and flag pixel-level issues a quick scan would miss.
               </p>
             </div>
-          </sp-dialog>
+          </div>
         </div>
 
         <div class="pane" id="p2">
@@ -219,8 +218,22 @@
               <div class="s-row"><label for="halftone">Amount</label><span class="s-val" id="halftoneV">100</span></div>
               <sp-slider id="halftone" min="0" max="100" value="100" hide-stepper></sp-slider>
             </div>
-            <div class="channel-row" style="margin-top: 2px">
-              <input type="color" id="htColor" value="#000000" /><span>Ink Colour</span>
+            <div class="s">
+              <div class="s-row">
+                <label for="htColor">Ink Colour</label><span class="ink-dot" id="htColorDot"></span>
+              </div>
+              <!-- UXP has no <input type="color"> — preset ink swatches + a hex
+                   field replace the dead native picker. -->
+              <div class="ink-swatches" id="htSwatches">
+                <button class="swatch" data-hex="#000000" style="background: #000000" title="Black"></button>
+                <button class="swatch" data-hex="#ffffff" style="background: #ffffff" title="White"></button>
+                <button class="swatch" data-hex="#d32f2f" style="background: #d32f2f" title="Red"></button>
+                <button class="swatch" data-hex="#1565c0" style="background: #1565c0" title="Blue"></button>
+                <button class="swatch" data-hex="#2e7d32" style="background: #2e7d32" title="Green"></button>
+                <button class="swatch" data-hex="#f9a825" style="background: #f9a825" title="Gold"></button>
+                <button class="swatch" data-hex="#6a1b9a" style="background: #6a1b9a" title="Purple"></button>
+                <sp-textfield id="htColor" value="#000000" placeholder="#000000"></sp-textfield>
+              </div>
             </div>
           </div>
           <div class="actions"><sp-button variant="cta" id="applyHalftone">Apply halftone</sp-button></div>
@@ -267,8 +280,8 @@
           </div>
           <div class="sec">
             <div class="grp">Auto Options</div>
-            <sp-switch id="sepAutoHalftone" checked>Auto-halftone each channel (rotated angles)</sp-switch>
-            <sp-switch id="sepRegMarks" checked>Add registration marks</sp-switch>
+            <sp-checkbox id="sepAutoHalftone" checked>Auto-halftone each channel (rotated angles)</sp-checkbox>
+            <sp-checkbox id="sepRegMarks" checked>Add registration marks</sp-checkbox>
             <div class="s">
               <div class="s-row"><label for="sepChoke">Choke</label><span class="s-val" id="sepChokeV">0</span></div>
               <sp-slider id="sepChoke" min="0" max="20" value="0" hide-stepper></sp-slider>
@@ -343,7 +356,7 @@
               <sp-action-button data-garment="coloured">Colour</sp-action-button>
             </div>
           </div>
-          <sp-switch id="autoUnderbase" checked>Auto white underbase on dark garments</sp-switch>
+          <sp-checkbox id="autoUnderbase" checked>Auto white underbase on dark garments</sp-checkbox>
           <div class="actions"><sp-button variant="cta" id="applyGarment">Optimise for garment</sp-button></div>
         </div>
 
@@ -422,10 +435,7 @@
 
           <div class="sec">
             <div class="grp">Halftone Screen</div>
-            <sp-switch id="dtHalftone"
-              >Render the flattened output as a halftone (reuses the Halftone tab's LPI / Angle / Dot Gain / Ink
-              Colour)</sp-switch
-            >
+            <sp-checkbox id="dtHalftone">Halftone the flattened output (uses the Halftone tool's settings)</sp-checkbox>
           </div>
 
           <div class="actions"><sp-button variant="cta" id="applyDT">Apply DT optimisation</sp-button></div>

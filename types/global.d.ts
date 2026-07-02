@@ -97,6 +97,7 @@ interface HTMLElement {
   selected: any;
   disabled: any;
   progress: any;
+  selectedIndex: any;
 }
 
 // core/api.js top-level functions — see file comment above.

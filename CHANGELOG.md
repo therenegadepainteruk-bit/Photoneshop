@@ -1,5 +1,61 @@
 # Changelog
 
+## v5.4.12 — Fix broken UI: five unsupported components replaced; workflow navigation redesign
+
+User report from a real Photoshop panel: "all of the dropdown options are
+just listed instead of being actionable and the UI is very messy and all
+over the place." Root cause: the v5.4.0 Spectrum migration used five things
+that are **not in UXP's built-in widget set** — they exist only in Spectrum
+Web Components (which needs a bundler + `@swc-uxp-wrappers`, deliberately
+absent from this plain-script plugin) or in browsers. UXP renders unknown
+elements as inert inline text, so:
+
+- `sp-tabs`/`sp-tab` (the entire 14-tab navigation) rendered as a flat,
+  unclickable list of labels — the "options just listed" mess.
+- `sp-switch` ×4 rendered as plain text, not toggles.
+- `sp-dialog` rendered the Deep Analysis modal with no card chrome.
+- `sp-progressbar` rendered nothing (Deep Analysis progress).
+- `<input type="color">` (Halftone ink + channel editor swatches) is not a
+  UXP control — dead squares.
+
+Verified against Adobe's UXP Spectrum widget reference and the official
+ui-kitchen-sink sample (the ground truth of what works in a plain panel);
+`sp-dropdown`'s documented selection API (`selectedIndex`, not `.value`)
+was confirmed the same way.
+
+### Fixes
+
+- **Workflow navigation redesign** (`index.html`, `ui/panels.js`,
+  `ui/styles.css`): the 14 flat tabs are now a two-tier chip nav built
+  entirely from `sp-action-button` (a real UXP widget, already proven by
+  the Target strip): tier 1 = workflow stage (Check → Design → Screens →
+  Print → Output), tier 2 = tool within the stage. All 14 panes, every
+  control id, `EDIT_PANES`, the live-preview lifecycle, and the saved
+  last-tab restore keep their existing meaning — `activateTab()` now also
+  syncs both nav tiers, and re-entering a stage returns to the tool last
+  used within it.
+- `sp-switch` → `sp-checkbox` (built-in; same `checked` property `chk()`
+  already reads): `sepAutoHalftone`, `sepRegMarks`, `autoUnderbase`,
+  `dtHalftone`.
+- `sp-dialog` → plain `div.modal-card` with its own card chrome
+  (background/border/radius/shadow) in CSS.
+- `sp-progressbar` → plain CSS track/fill bar; `setBar()` sets fill width.
+- `<input type="color">` → preset ink swatch buttons + hex `sp-textfield`
+  (id `htColor` unchanged, so every `val("htColor")` → `hexToRgb()` read
+  works as before) with a live colour dot; the channel editor
+  (`engines/separation.js` `renderChannelEditor`) gets a swatch + hex field
+  per channel, recolouring only on a complete valid `#rrggbb` so mid-typing
+  keystrokes don't recolour the layer black.
+- `core/api.js` `val()` now resolves `sp-dropdown` selection via the
+  documented `selectedIndex` API (falling back to the `[selected]` menu
+  item for the initial state) instead of reading an undocumented `.value`
+  off the dropdown element.
+
+98/98 tests pass; wiring audit confirms all 29 `bind()` ids and all 14
+panes reachable from the new nav. Still not verified against a live
+Photoshop host in this environment — but every widget used is now one
+Adobe's own sample demonstrates working in a plain UXP panel.
+
 ## v5.4.11 — Fix CI: bump Node 18 → 20.19+ (vite 7 dropped Node 18 support)
 
 The v5.4.10 CI additions ran this workflow against GitHub's actual Node 18

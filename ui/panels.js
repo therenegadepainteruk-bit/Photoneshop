@@ -3,19 +3,53 @@
  * Loaded last; all engine functions already defined.
  */
 
-// Switches to pane n, mirroring exactly what a user tab click already did —
-// shared by the sp-tabs "change" handler below and by initTabs()'s own
-// startup restore of the last-active tab (core/storage.js), so there is
-// only one place that knows how to activate a tab.
-function activateTab(n, tabsEl) {
+// Workflow navigation — which panes belong to which stage chip. Tier 1 is
+// the print-workflow stage, tier 2 the tool within it; each tool maps to one
+// of the same pane numbers (p1–p14) the plugin has always used, so
+// EDIT_PANES, live-preview lifecycle, and the saved lastTab all keep their
+// existing meaning. (Replaces sp-tabs, which is not a built-in UXP widget —
+// it rendered as a dead, unclickable list of labels in a real panel.)
+const NAV_STAGE_OF_PANE = {
+  1: 0,
+  7: 0,
+  11: 0, // Check: Print Doctor, Cleanup, Production
+  2: 1,
+  3: 1,
+  4: 1, // Design: Design Studio, Halftone, Colours
+  5: 2,
+  6: 2, // Screens: Separate, White Ink
+  9: 3,
+  8: 3,
+  10: 3, // Print: DTG/DTF, Garment, Preview
+  12: 4,
+  13: 4,
+  14: 4, // Output: Export, Presets, Diagnostics
+};
+
+// Switches to pane n and syncs both nav tiers to match — the single place
+// that knows how to activate a tool, shared by stage clicks, tool clicks,
+// and startup restore of the last-active tool (core/storage.js).
+function activateTab(n) {
   clearPreviewTimer(); // don't leave a debounced tick scheduled against the pane being left
   _currentTab = n; // defined in core/preview.js
-  if (tabsEl) tabsEl.selected = String(n);
   document.querySelectorAll(".pane").forEach(function (x) {
     x.classList.remove("on");
   });
   let pane = document.getElementById("p" + n);
   if (pane) pane.classList.add("on");
+
+  // Sync nav chips: select the owning stage, show its tool row, select the tool.
+  let stage = NAV_STAGE_OF_PANE[n];
+  if (stage !== undefined) {
+    let stageBtn = document.querySelector('#navStages sp-action-button[data-stage="' + stage + '"]');
+    if (stageBtn) selectOne("#navStages sp-action-button", stageBtn);
+    document.querySelectorAll(".nav-tools").forEach(function (row) {
+      row.classList.toggle("on", row.id === "stageTools" + stage);
+    });
+    let toolBtn = document.querySelector("#stageTools" + stage + ' sp-action-button[data-pane="' + n + '"]');
+    if (toolBtn) selectOne("#stageTools" + stage + " sp-action-button", toolBtn);
+  }
+
   let bar = document.getElementById("applyBar");
   if (bar) bar.classList.toggle("hide", !EDIT_PANES[n]);
   let body = document.querySelector(".body");
@@ -23,28 +57,38 @@ function activateTab(n, tabsEl) {
   setUiState("lastTab", n); // core/storage.js
 }
 
-// sp-tabs owns its own single-selection state (the "selected" attribute on
-// the <sp-tabs> container itself, not a per-tab class) — unlike the chip
-// groups, this is not a selectOne() case. Content panes stay plain divs
-// shown/hidden by class, exactly as before.
-function initTabs() {
-  let tabs = document.getElementById("navTabs");
-  if (tabs) {
-    tabs.addEventListener("change", function () {
-      let n = parseInt(tabs.selected, 10);
-      if (!n) return;
-      activateTab(n, null); // tabsEl already reflects the click, no need to re-set it
-      // Cancel preview when leaving an edit pane
-      if (!EDIT_PANES[n] && (_previewActive || _sourceReady)) cancelPreview();
+// Activating any pane cancels a live-preview session left open on an edit
+// pane being navigated away from — same rule the old tab handler enforced.
+function navigateToPane(n) {
+  activateTab(n);
+  if (!EDIT_PANES[n] && (_previewActive || _sourceReady)) cancelPreview();
+}
+
+function initNav() {
+  // Stage chip → jump to whichever tool is already selected in that stage's
+  // row (its first tool on a fresh panel), so re-entering a stage returns to
+  // where the user left it within that stage.
+  document.querySelectorAll("#navStages sp-action-button").forEach(function (b) {
+    b.addEventListener("click", function (e) {
+      let stage = e.currentTarget.dataset.stage;
+      let row = document.getElementById("stageTools" + stage);
+      if (!row) return;
+      let tool = row.querySelector("sp-action-button[selected]") || row.querySelector("sp-action-button");
+      if (tool) navigateToPane(parseInt(tool.dataset.pane, 10));
     });
-  }
-  // Restore the last active tab, if one was ever saved (core/storage.js).
+  });
+  // Tool chip → its pane.
+  document.querySelectorAll(".nav-tools sp-action-button").forEach(function (b) {
+    b.addEventListener("click", function (e) {
+      navigateToPane(parseInt(e.currentTarget.dataset.pane, 10));
+    });
+  });
+  // Restore the last active tool, if one was ever saved (core/storage.js).
   // No saved value yet (first run, or before this feature existed) leaves
-  // today's hard-coded startup tab untouched — this only changes behaviour
-  // once a user has actually switched tabs at least once.
+  // the hard-coded startup pane untouched.
   let lastTab = getUiState("lastTab", null);
   if (lastTab != null && document.getElementById("p" + lastTab)) {
-    activateTab(parseInt(lastTab, 10), tabs);
+    activateTab(parseInt(lastTab, 10));
   }
   // Set initial apply bar state
   let bar = document.getElementById("applyBar");
@@ -131,11 +175,35 @@ function initSliders() {
       if (hasDoc() && EDIT_PANES[_currentTab]) schedulePreview();
     });
 
-  let htColor = document.getElementById("htColor");
-  if (htColor)
-    htColor.addEventListener("input", function () {
+  initInkPicker();
+}
+
+// Halftone ink colour — preset swatches + hex textfield (UXP has no
+// <input type="color">; the old native picker rendered as a dead square).
+// The textfield keeps the id "htColor" so every existing val("htColor") →
+// hexToRgb() read across the engines works unchanged.
+function initInkPicker() {
+  let field = document.getElementById("htColor");
+  let dot = document.getElementById("htColorDot");
+  function syncDot() {
+    if (!dot || !field) return;
+    let rgb = hexToRgb(field.value); // tolerates partial/bad input (falls back to black)
+    dot.style.background = "rgb(" + rgb.r + "," + rgb.g + "," + rgb.b + ")";
+  }
+  if (field) {
+    field.addEventListener("input", function () {
+      syncDot();
       if (hasDoc() && EDIT_PANES[_currentTab]) schedulePreview();
     });
+    syncDot();
+  }
+  document.querySelectorAll("#htSwatches .swatch").forEach(function (sw) {
+    sw.addEventListener("click", function (e) {
+      if (field) field.value = e.currentTarget.dataset.hex;
+      syncDot();
+      if (hasDoc() && EDIT_PANES[_currentTab]) schedulePreview();
+    });
+  });
 }
 
 function initChips() {
@@ -258,7 +326,7 @@ async function init() {
     return; // stop here — do not wire up UI against missing dependencies
   }
 
-  initTabs();
+  initNav();
   initSliders();
   initChips();
   initLayerTarget();

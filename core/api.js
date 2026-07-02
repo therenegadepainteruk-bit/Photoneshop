@@ -148,7 +148,19 @@ function bind(id, fn) {
 
 function val(id) {
   var e = document.getElementById(id);
-  return e ? e.value : "";
+  if (!e) return "";
+  // UXP's built-in <sp-dropdown> exposes its selection as selectedIndex (a
+  // "value" property on the dropdown itself is not part of the documented
+  // API) — resolve it to the selected <sp-menu-item>'s value attribute.
+  // Falls back to the item carrying the selected attribute (the initial
+  // state before the user has changed anything).
+  if (e.tagName && e.tagName.toLowerCase() === "sp-dropdown") {
+    var items = e.querySelectorAll("sp-menu-item");
+    var idx = typeof e.selectedIndex === "number" ? e.selectedIndex : -1;
+    var item = idx >= 0 && idx < items.length ? items[idx] : e.querySelector("sp-menu-item[selected]");
+    return item ? item.getAttribute("value") || item.textContent.trim() : "";
+  }
+  return e.value != null ? e.value : "";
 }
 function num(id) {
   return parseFloat(val(id)) || 0;

@@ -282,6 +282,8 @@ function renderChannelEditor() {
     container.innerHTML = "";
     return;
   }
+  // Swatch preview + hex textfield per channel — UXP has no
+  // <input type="color">, so the old native picker rendered as a dead square.
   let html = '<div class="grp">Channel Colours — Live Edit</div>';
   _channelLayers.forEach(function (ch, i) {
     const hex =
@@ -292,18 +294,34 @@ function renderChannelEditor() {
         })
         .join("");
     html +=
-      '<div class="channel-row"><input type="color" value="' +
+      '<div class="channel-row">' +
+      '<span class="ink-dot" id="chDot' +
+      i +
+      '" style="background:' +
+      hex +
+      '"></span>' +
+      '<sp-textfield class="channel-hex" value="' +
       hex +
       '" data-ch="' +
       i +
-      '"><span>' +
+      '"></sp-textfield>' +
+      "<span>" +
       ch.name +
       "</span></div>";
   });
   container.innerHTML = html;
-  container.querySelectorAll("input[type=color]").forEach(function (inp) {
+  container.querySelectorAll("sp-textfield.channel-hex").forEach(function (inp) {
     inp.addEventListener("input", function (e) {
-      recolorChannel(parseInt(e.target.dataset.ch, 10), e.target.value);
+      const i = parseInt(e.target.dataset.ch, 10);
+      const raw = e.target.value;
+      // Only recolour on a complete, valid #rrggbb — mid-typing values would
+      // otherwise recolour the layer black on every keystroke (hexToRgb's
+      // fallback) while the user is still editing.
+      if (!/^#?[0-9a-fA-F]{6}$/.test(raw)) return;
+      const hexVal = raw[0] === "#" ? raw : "#" + raw;
+      const dot = document.getElementById("chDot" + i);
+      if (dot) dot.style.background = hexVal;
+      recolorChannel(i, hexVal);
     });
   });
 }
