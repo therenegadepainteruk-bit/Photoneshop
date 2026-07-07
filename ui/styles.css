@@ -1,0 +1,668 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* Base tokens map onto Photoshop's own UXP host CSS variables — injected by
+   the host at runtime and updated live if the user switches between its
+   four UI brightness themes (darkest/dark/medium/light) — so the panel's
+   background, text, borders and text size always match the surrounding
+   Photoshop chrome exactly, the same way Photoshop's own native panels do.
+   The literal hex values are fallbacks only, used outside a UXP host (e.g.
+   a plain-browser dev preview) where these variables aren't defined.
+   --bg2/--bg3/--bg4 (elevated "card" surfaces) have no host equivalent —
+   UXP only exposes one background/text/border tone, not a tonal ramp — so
+   they stay fixed, with a light-theme override below via prefers-color-scheme
+   (also host-provided) so cards still read correctly against a light base. */
+:root {
+  --fg: var(--uxp-host-text-color, #f0f0f0);
+  --fg2: var(--uxp-host-text-color-secondary, #8a8a8e);
+  --fg3: var(--uxp-host-label-text-color, #52525a);
+  --bg: var(--uxp-host-background-color, #0c0c0d);
+  --bg2: #141416;
+  --bg3: #1c1c1f;
+  --bg4: #252528;
+  --line: var(--uxp-host-border-color, #2a2a2d);
+  --ok: #3ecf6a;
+  --warn: #ffb020;
+  --err: #ff5c5c;
+  --f: adobe-clean, adobe-clean-ux, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: light), (prefers-color-scheme: lightest) {
+  :root {
+    --bg2: #e4e4e4;
+    --bg3: #ececec;
+    --bg4: #d6d6d6;
+  }
+}
+html,
+body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--f);
+  font-size: var(--uxp-host-font-size, 13px);
+  -webkit-font-smoothing: antialiased;
+}
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.hd {
+  padding: 14px 16px 10px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.hd h1 {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0.3px;
+}
+.hd p {
+  font-size: 9.5px;
+  font-weight: 500;
+  color: var(--fg3);
+  margin-top: 2px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+}
+
+/* Generic visibility utility (DT Studio's DTG/DTF sub-mode sections and the
+   Deep Analysis modal backdrop use this). */
+.hide {
+  display: none;
+}
+
+.target-strip {
+  display: flex;
+  gap: 5px;
+  padding: 6px 0 8px;
+  flex-shrink: 0;
+  align-items: center;
+}
+.target-label {
+  font-size: 10px;
+  font-weight: 580;
+  color: var(--fg3);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-right: 4px;
+  white-space: nowrap;
+}
+
+/* WORKFLOW NAVIGATION — two rows of sp-action-button chips (sp-tabs is not a
+   built-in UXP widget). Tier 1: workflow stage; tier 2: tool within it. */
+.nav {
+  flex-shrink: 0;
+  padding: 0 16px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.nav-stages {
+  display: flex;
+  gap: 4px;
+}
+.nav-stages sp-action-button {
+  flex: 1;
+}
+.nav-tools {
+  display: none;
+  gap: 4px;
+  margin-top: 6px;
+}
+.nav-tools.on {
+  display: flex;
+}
+.nav-tools sp-action-button {
+  flex: 1;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 16px 14px;
+}
+.body::-webkit-scrollbar {
+  width: 6px;
+}
+.body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.body::-webkit-scrollbar-thumb {
+  background: var(--bg4);
+  border-radius: 4px;
+}
+.pane {
+  display: none;
+  flex-direction: column;
+  gap: 18px;
+}
+.pane.on {
+  display: flex;
+}
+.sec {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.grp {
+  font-size: 9.5px;
+  font-weight: 640;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--fg3);
+}
+.hint {
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--fg3);
+}
+.stub-note {
+  padding: 13px;
+  background: var(--bg3);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-size: 11.5px;
+  color: var(--fg3);
+  line-height: 1.6;
+}
+.stub-note strong {
+  color: var(--fg2);
+  display: block;
+  margin-bottom: 5px;
+  font-size: 12.5px;
+}
+
+/* Slider rows — sp-slider renders its own track/thumb/fill natively; only
+   the label + value readout above it is this plugin's own markup. */
+.s {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.s-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.s-row label {
+  font-size: 13px;
+  font-weight: 500;
+}
+.s-val {
+  font-size: 13px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  min-width: 32px;
+  text-align: right;
+}
+sp-slider {
+  width: 100%;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chips sp-action-button {
+  flex: 1;
+  min-width: 46px;
+}
+#builtinList sp-action-button {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+sp-button {
+  width: 100%;
+}
+.resize-row {
+  display: flex;
+  gap: 7px;
+  align-items: stretch;
+}
+.resize-row sp-textfield {
+  flex: 1;
+  min-width: 0;
+}
+.resize-row sp-button {
+  flex-shrink: 0;
+  width: auto;
+}
+.dr-score-wrap {
+  text-align: center;
+  padding: 14px 0 6px;
+}
+.dr-score {
+  font-size: 52px;
+  font-weight: 700;
+  letter-spacing: -2px;
+  line-height: 1;
+}
+.dr-score-label {
+  font-size: 9.5px;
+  font-weight: 640;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--fg3);
+  margin-top: 5px;
+}
+.dr-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 4px;
+}
+.dr-row {
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 2px 0;
+}
+.dr-err {
+  color: var(--err);
+}
+.dr-warn {
+  color: var(--warn);
+}
+.dr-ok {
+  color: var(--fg2);
+}
+.dr-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+.dr-stat {
+  background: var(--bg3);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 8px;
+  text-align: center;
+}
+.dr-stat-v {
+  font-size: 16px;
+  font-weight: 680;
+  font-variant-numeric: tabular-nums;
+}
+.dr-stat-l {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  color: var(--fg3);
+  margin-top: 3px;
+}
+.dr-rec-label {
+  font-size: 9.5px;
+  font-weight: 640;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--fg3);
+  margin-top: 12px;
+  margin-bottom: 5px;
+}
+.dr-rec-val {
+  font-size: 14px;
+  font-weight: 600;
+}
+.dr-fixes-label {
+  font-size: 9.5px;
+  font-weight: 640;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--fg3);
+  margin-top: 10px;
+  margin-bottom: 4px;
+}
+.dr-fix {
+  font-size: 12px;
+  color: var(--fg2);
+  padding: 2px 0;
+}
+#builtinList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+#userPresetList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.preset-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 11px 13px;
+  background: var(--bg3);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+.preset-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.preset-badge {
+  font-size: 9px;
+  font-weight: 640;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--fg3);
+}
+.prod-score-card {
+  padding: 14px;
+  background: var(--bg3);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  text-align: center;
+}
+.prod-score {
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: -1px;
+}
+.prod-label {
+  font-size: 9.5px;
+  font-weight: 640;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--fg3);
+  margin-top: 4px;
+}
+.prod-detail {
+  margin-top: 12px;
+  font-size: 12px;
+  line-height: 2;
+  text-align: left;
+  color: var(--fg2);
+}
+.bar {
+  flex-shrink: 0;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  background: var(--bg2);
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 8px;
+}
+.bar.hide {
+  display: none;
+}
+.foot {
+  flex-shrink: 0;
+  padding: 7px 16px 9px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+  min-height: 36px;
+  gap: 8px;
+}
+.msg {
+  font-size: 11px;
+  color: var(--fg3);
+  opacity: 0;
+  transition: opacity 0.25s;
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.msg.show {
+  opacity: 1;
+}
+.msg.success {
+  color: var(--fg2);
+}
+.msg.error {
+  color: var(--err);
+}
+.msg.warning {
+  color: var(--warn);
+}
+.foot-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.cov {
+  font-size: 10.5px;
+  color: var(--fg3);
+  font-variant-numeric: tabular-nums;
+}
+.cov strong {
+  color: var(--fg2);
+}
+
+/* INK / CHANNEL COLOUR PICKERS — swatch chips + hex textfield (UXP has no
+   <input type="color">). Shared by the Halftone ink picker and the channel
+   editor's live colour rows. */
+.ink-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: #000;
+  flex-shrink: 0;
+}
+.ink-swatches {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ink-swatches .swatch {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.ink-swatches sp-textfield {
+  flex: 1;
+  min-width: 76px;
+}
+.channel-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  background: var(--bg3);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  margin-top: 6px;
+}
+.channel-row sp-textfield.channel-hex {
+  width: 92px;
+  flex-shrink: 0;
+}
+.channel-row span {
+  font-size: 13px;
+  font-weight: 540;
+}
+
+/* DIAGNOSTICS */
+.diag-log {
+  background: var(--bg3);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 12px 13px;
+  font-family: "SF Mono", Monaco, Consolas, monospace;
+  font-size: 10.5px;
+  line-height: 1.7;
+  color: var(--fg2);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 50vh;
+  overflow-y: auto;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* COLOUR MODE ROW */
+.colour-mode-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 0;
+}
+.colour-mode-row .chips {
+  flex: 1;
+}
+
+/* DEEP ANALYSIS DIALOG — plain div card (sp-dialog is not a built-in UXP
+   widget and rendered with no chrome); backdrop + open/close visibility is
+   this plugin's own (proven) logic. */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+.modal-overlay.hide {
+  display: none;
+}
+.modal-card {
+  width: 100%;
+  max-width: 480px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.modal-body {
+  padding: 16px 18px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+.modal-body::-webkit-scrollbar-thumb {
+  background: var(--bg4);
+  border-radius: 4px;
+}
+
+/* DEEP ANALYSIS RESULTS */
+.deep-progress {
+  text-align: center;
+  padding: 30px 10px;
+}
+.deep-progress-track {
+  margin-top: 14px;
+  width: 100%;
+  height: 6px;
+  background: var(--bg4);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.deep-progress-fill {
+  width: 0%;
+  height: 100%;
+  background: var(--fg2);
+  border-radius: 3px;
+  transition: width 0.25s;
+}
+.deep-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.deep-label {
+  font-size: 9.5px;
+  font-weight: 640;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--fg3);
+}
+.deep-rec {
+  background: var(--bg3);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 12px 13px;
+}
+.deep-rec-title {
+  font-size: 13.5px;
+  font-weight: 650;
+  margin-bottom: 3px;
+}
+.deep-rec-sub {
+  font-size: 11.5px;
+  color: var(--fg3);
+  line-height: 1.5;
+}
+.deep-row {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--fg2);
+}
+.deep-row.warn {
+  color: var(--warn);
+}
+.deep-row.err {
+  color: var(--err);
+}
+.deep-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.deep-stat {
+  background: var(--bg3);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+}
+.deep-stat-v {
+  font-size: 15px;
+  font-weight: 680;
+}
+.deep-stat-l {
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--fg3);
+  margin-top: 2px;
+}

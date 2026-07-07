@@ -1,13 +1,562 @@
 <!doctype html>
-<html lang="en">
+<html>
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
+    <meta charset="utf-8" />
+    <title>Photoneshop</title>
+    <link rel="stylesheet" href="ui/styles.css" />
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <div class="app">
+      <div class="hd">
+        <div>
+          <h1>Photoneshop</h1>
+          <p>Garment print toolkit</p>
+        </div>
+      </div>
+
+      <!-- WORKFLOW NAVIGATION — two tiers of sp-action-button chips (a real,
+           supported UXP widget — sp-tabs is NOT in UXP's built-in widget set
+           and renders as dead inline text, which is why the old tab strip
+           showed all 14 labels as an unclickable list). Tier 1 is the print
+           workflow stage; tier 2 picks the tool within that stage. Each tool
+           chip maps to one of the same 14 panes (p1–p14) as before — pane
+           ids, control ids, and the live-preview architecture are unchanged. -->
+      <div class="nav">
+        <div class="nav-stages" id="navStages">
+          <sp-action-button selected data-stage="0">Check</sp-action-button>
+          <sp-action-button data-stage="1">Design</sp-action-button>
+          <sp-action-button data-stage="2">Screens</sp-action-button>
+          <sp-action-button data-stage="3">Print</sp-action-button>
+          <sp-action-button data-stage="4">Output</sp-action-button>
+        </div>
+        <div class="nav-tools on" id="stageTools0">
+          <sp-action-button quiet selected data-pane="1">Print Doctor</sp-action-button>
+          <sp-action-button quiet data-pane="7">Cleanup</sp-action-button>
+          <sp-action-button quiet data-pane="11">Production</sp-action-button>
+        </div>
+        <div class="nav-tools" id="stageTools1">
+          <sp-action-button quiet selected data-pane="2">Design Studio</sp-action-button>
+          <sp-action-button quiet data-pane="3">Halftone</sp-action-button>
+          <sp-action-button quiet data-pane="4">Colours</sp-action-button>
+        </div>
+        <div class="nav-tools" id="stageTools2">
+          <sp-action-button quiet selected data-pane="5">Separate</sp-action-button>
+          <sp-action-button quiet data-pane="6">White Ink</sp-action-button>
+        </div>
+        <div class="nav-tools" id="stageTools3">
+          <sp-action-button quiet selected data-pane="9">DTG / DTF</sp-action-button>
+          <sp-action-button quiet data-pane="8">Garment</sp-action-button>
+          <sp-action-button quiet data-pane="10">Preview</sp-action-button>
+        </div>
+        <div class="nav-tools" id="stageTools4">
+          <sp-action-button quiet selected data-pane="12">Export</sp-action-button>
+          <sp-action-button quiet data-pane="13">Presets</sp-action-button>
+          <sp-action-button quiet data-pane="14">Diagnostics</sp-action-button>
+        </div>
+      </div>
+
+      <div class="body">
+        <div class="target-strip">
+          <span class="target-label">Target</span>
+          <sp-action-button selected data-target="visible">All Visible</sp-action-button>
+          <sp-action-button data-target="active">Active Layer</sp-action-button>
+          <sp-action-button data-target="selection">Selection</sp-action-button>
+        </div>
+
+        <div class="pane on" id="p1">
+          <div class="sec">
+            <div class="actions">
+              <sp-button variant="cta" id="runDoctor">Analyse this artwork</sp-button>
+              <sp-button variant="secondary" id="runDeep">Deep analysis (pixel-level)</sp-button>
+            </div>
+            <div class="dr-score-wrap">
+              <div class="dr-score" id="drScore">—</div>
+              <div class="dr-score-label">Printability Score</div>
+            </div>
+            <div class="dr-detail" id="drDetail">
+              <p class="hint">
+                Open an image and run analysis. Get resolution, ink coverage, colour complexity, recommended print
+                method, and actionable fixes.
+              </p>
+            </div>
+            <div id="drRec"></div>
+          </div>
+          <div class="sec">
+            <div class="grp">Quick Fixes</div>
+            <div class="actions">
+              <sp-button variant="secondary" id="fixUpscale">Upscale to 300 DPI</sp-button>
+            </div>
+            <div class="resize-row">
+              <sp-textfield type="number" id="resizeW" placeholder="Width (in)"></sp-textfield>
+              <sp-textfield type="number" id="resizeH" placeholder="Height (in)"></sp-textfield>
+              <sp-button variant="secondary" id="fixResize">Resize</sp-button>
+            </div>
+            <div class="actions">
+              <sp-button variant="secondary" id="fixEnhance">Auto enhance</sp-button>
+              <sp-button variant="secondary" id="fixFlatten">Flatten layers</sp-button>
+            </div>
+            <div class="colour-mode-row">
+              <span class="target-label">Colour Mode</span>
+              <div class="chips" id="colourModeToggle">
+                <sp-action-button selected id="toggleRGB" data-mode="RGB">RGB</sp-action-button>
+                <sp-action-button id="toggleCMYK" data-mode="CMYK">CMYK</sp-action-button>
+              </div>
+            </div>
+            <p class="hint" id="fixHint">Run analysis first — fixes activate based on what your artwork needs.</p>
+          </div>
+        </div>
+
+        <!-- DEEP ANALYSIS DIALOG -->
+        <!-- sp-dialog is not a built-in UXP widget (it rendered with no card
+             chrome) — plain div styled by .modal-card instead. -->
+        <div class="modal-overlay hide" id="deepModal">
+          <div class="modal-card" id="deepDialog">
+            <div class="modal-head">
+              <sp-heading size="S">Deep Analysis</sp-heading>
+              <sp-action-button quiet id="deepClose">×</sp-action-button>
+            </div>
+            <div class="modal-body" id="deepBody">
+              <p class="hint">
+                Scans your artwork at high resolution — far deeper than the quick check — to recommend the best halftone
+                settings, colour profile, and flag pixel-level issues a quick scan would miss.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="pane" id="p2">
+          <div class="sec">
+            <div class="grp">Threshold</div>
+            <div class="s">
+              <div class="s-row"><label for="thresh">Level</label><span class="s-val" id="threshV">128</span></div>
+              <sp-slider id="thresh" min="0" max="255" value="128" hide-stepper></sp-slider>
+            </div>
+            <div class="actions">
+              <sp-button variant="secondary" id="autoAnalyse">Auto-detect optimal threshold</sp-button>
+            </div>
+          </div>
+          <div class="sec">
+            <div class="grp">Tone</div>
+            <div class="s">
+              <div class="s-row"><label for="exposure">Exposure</label><span class="s-val" id="exposureV">0</span></div>
+              <sp-slider id="exposure" min="-100" max="100" value="0" hide-stepper></sp-slider>
+            </div>
+            <div class="s">
+              <div class="s-row">
+                <label for="highlight">Highlights</label><span class="s-val" id="highlightV">0</span>
+              </div>
+              <sp-slider id="highlight" min="0" max="100" value="0" hide-stepper></sp-slider>
+            </div>
+            <div class="s">
+              <div class="s-row"><label for="shadow">Shadow Lift</label><span class="s-val" id="shadowV">0</span></div>
+              <sp-slider id="shadow" min="0" max="100" value="0" hide-stepper></sp-slider>
+            </div>
+            <div class="s">
+              <div class="s-row"><label for="bright">Brightness</label><span class="s-val" id="brightV">0</span></div>
+              <sp-slider id="bright" min="-100" max="100" value="0" hide-stepper></sp-slider>
+            </div>
+            <div class="s">
+              <div class="s-row"><label for="contrast">Contrast</label><span class="s-val" id="contrastV">0</span></div>
+              <sp-slider id="contrast" min="-100" max="100" value="0" hide-stepper></sp-slider>
+            </div>
+            <div class="s">
+              <div class="s-row"><label for="blur">Blur</label><span class="s-val" id="blurV">0</span></div>
+              <sp-slider id="blur" min="0" max="100" value="0" hide-stepper></sp-slider>
+            </div>
+          </div>
+          <div class="sec">
+            <div class="grp">Vintage</div>
+            <div class="s">
+              <div class="s-row"><label for="fade">Fade</label><span class="s-val" id="fadeV">0</span></div>
+              <sp-slider id="fade" min="0" max="100" value="0" hide-stepper></sp-slider>
+            </div>
+            <div class="s">
+              <div class="s-row"><label for="distress">Distress</label><span class="s-val" id="distressV">0</span></div>
+              <sp-slider id="distress" min="0" max="100" value="0" hide-stepper></sp-slider>
+            </div>
+            <div class="s">
+              <div class="s-row"><label for="bleed">Ink Bleed</label><span class="s-val" id="bleedV">0</span></div>
+              <sp-slider id="bleed" min="0" max="30" value="0" hide-stepper></sp-slider>
+            </div>
+            <div class="s">
+              <div class="s-row"><label for="grain">Grain</label><span class="s-val" id="grainV">0</span></div>
+              <sp-slider id="grain" min="0" max="100" value="0" hide-stepper></sp-slider>
+            </div>
+            <div class="s">
+              <div class="s-row"><label for="effect">Effect</label></div>
+              <sp-dropdown id="effect" placeholder="No effect">
+                <sp-menu slot="options">
+                  <sp-menu-item value="none" selected>No effect</sp-menu-item>
+                  <sp-menu-item value="photocopy">Photocopy</sp-menu-item>
+                  <sp-menu-item value="newspaper">Newspaper</sp-menu-item>
+                </sp-menu>
+              </sp-dropdown>
+            </div>
+          </div>
+        </div>
+
+        <div class="pane" id="p3">
+          <div class="sec">
+            <div class="grp">Settings</div>
+            <div class="s">
+              <div class="s-row"><label for="lpi">LPI (frequency)</label><span class="s-val" id="lpiV">45</span></div>
+              <sp-slider id="lpi" min="20" max="100" value="45" hide-stepper></sp-slider>
+            </div>
+            <div class="s">
+              <div class="s-row"><label for="htAngle">Angle</label><span class="s-val" id="htAngleV">45</span></div>
+              <sp-slider id="htAngle" min="0" max="90" value="45" step="15" hide-stepper></sp-slider>
+            </div>
+            <div class="s">
+              <div class="s-row"><label for="htSize">Dot Size</label><span class="s-val" id="htSizeV">8</span></div>
+              <sp-slider id="htSize" min="4" max="30" value="8" hide-stepper></sp-slider>
+            </div>
+            <div class="s">
+              <div class="s-row"><label for="dotGain">Dot Gain</label><span class="s-val" id="dotGainV">0</span></div>
+              <sp-slider id="dotGain" min="0" max="40" value="0" hide-stepper></sp-slider>
+            </div>
+            <div class="s">
+              <div class="s-row"><label for="halftone">Amount</label><span class="s-val" id="halftoneV">100</span></div>
+              <sp-slider id="halftone" min="0" max="100" value="100" hide-stepper></sp-slider>
+            </div>
+            <div class="s">
+              <div class="s-row">
+                <label for="htColor">Ink Colour</label><span class="ink-dot" id="htColorDot"></span>
+              </div>
+              <!-- UXP has no <input type="color"> — preset ink swatches + a hex
+                   field replace the dead native picker. -->
+              <div class="ink-swatches" id="htSwatches">
+                <button class="swatch" data-hex="#000000" style="background: #000000" title="Black"></button>
+                <button class="swatch" data-hex="#ffffff" style="background: #ffffff" title="White"></button>
+                <button class="swatch" data-hex="#d32f2f" style="background: #d32f2f" title="Red"></button>
+                <button class="swatch" data-hex="#1565c0" style="background: #1565c0" title="Blue"></button>
+                <button class="swatch" data-hex="#2e7d32" style="background: #2e7d32" title="Green"></button>
+                <button class="swatch" data-hex="#f9a825" style="background: #f9a825" title="Gold"></button>
+                <button class="swatch" data-hex="#6a1b9a" style="background: #6a1b9a" title="Purple"></button>
+                <sp-textfield id="htColor" value="#000000" placeholder="#000000"></sp-textfield>
+              </div>
+            </div>
+          </div>
+          <div class="actions"><sp-button variant="cta" id="applyHalftone">Apply halftone</sp-button></div>
+        </div>
+
+        <div class="pane" id="p4">
+          <div class="sec">
+            <div class="grp">Target Colour Count</div>
+            <div class="chips" id="colorChips">
+              <sp-action-button data-colors="2">2</sp-action-button>
+              <sp-action-button data-colors="3">3</sp-action-button>
+              <sp-action-button selected data-colors="4">4</sp-action-button>
+              <sp-action-button data-colors="6">6</sp-action-button>
+              <sp-action-button data-colors="8">8</sp-action-button>
+              <sp-action-button data-colors="10">10</sp-action-button>
+            </div>
+            <p class="hint">Creates one real, named, coloured layer per detected colour — not a flattened raster.</p>
+          </div>
+          <div class="actions">
+            <sp-button variant="cta" id="reduceColors">Split into colour layers</sp-button>
+            <sp-button variant="secondary" id="exportSpots">Export spot channels + PNG</sp-button>
+          </div>
+          <div class="sec" id="channelEditor"></div>
+        </div>
+
+        <div class="pane" id="p5">
+          <div class="sec">
+            <div class="grp">Type</div>
+            <div class="chips" id="sepChips">
+              <sp-action-button data-sep="spot">Spot</sp-action-button>
+              <sp-action-button selected data-sep="cmyk">CMYK</sp-action-button>
+              <sp-action-button data-sep="simprocess">Sim Process</sp-action-button>
+            </div>
+          </div>
+          <div class="sec" id="sepColorCountSec">
+            <div class="grp">Colour Count</div>
+            <div class="chips" id="sepColorChips">
+              <sp-action-button data-sepcolors="2">2</sp-action-button>
+              <sp-action-button data-sepcolors="3">3</sp-action-button>
+              <sp-action-button selected data-sepcolors="4">4</sp-action-button>
+              <sp-action-button data-sepcolors="6">6</sp-action-button>
+              <sp-action-button data-sepcolors="8">8</sp-action-button>
+            </div>
+          </div>
+          <div class="sec">
+            <div class="grp">Auto Options</div>
+            <sp-checkbox id="sepAutoHalftone" checked>Auto-halftone each channel (rotated angles)</sp-checkbox>
+            <sp-checkbox id="sepRegMarks" checked>Add registration marks</sp-checkbox>
+            <div class="s">
+              <div class="s-row"><label for="sepChoke">Choke</label><span class="s-val" id="sepChokeV">0</span></div>
+              <sp-slider id="sepChoke" min="0" max="20" value="0" hide-stepper></sp-slider>
+            </div>
+          </div>
+          <div class="actions"><sp-button variant="cta" id="autoSeparate">Auto separate</sp-button></div>
+          <div class="sec">
+            <div class="grp">Quick Tools</div>
+            <div class="actions">
+              <sp-button variant="secondary" id="shiftColors">Cycle colour palette</sp-button>
+              <sp-button variant="secondary" id="applyKnockout">Apply ink-saving knockout</sp-button>
+            </div>
+          </div>
+          <div class="stub-note">
+            <strong>Screen Studio</strong>Auto Separate above splits your artwork into spot / CMYK / simulated-process
+            channels and halftones each one simultaneously, at rotated screen angles, with optional choke and
+            registration marks — everything a screen-print job needs in one pass. Advanced spread and vector crop marks
+            are still planned.
+          </div>
+        </div>
+
+        <div class="pane" id="p6">
+          <div class="sec">
+            <div class="grp">Underbase</div>
+            <div class="s">
+              <div class="s-row">
+                <label for="wDensity">White Density</label><span class="s-val" id="wDensityV">100</span>
+              </div>
+              <sp-slider id="wDensity" min="50" max="100" value="100" hide-stepper></sp-slider>
+            </div>
+            <div class="s">
+              <div class="s-row"><label for="wChoke">Choke</label><span class="s-val" id="wChokeV">0</span></div>
+              <sp-slider id="wChoke" min="0" max="20" value="0" hide-stepper></sp-slider>
+            </div>
+            <div class="s">
+              <div class="s-row"><label for="wFeather">Feather</label><span class="s-val" id="wFeatherV">0</span></div>
+              <sp-slider id="wFeather" min="0" max="20" value="0" hide-stepper></sp-slider>
+            </div>
+            <div class="s">
+              <div class="s-row"><label for="wHl">Highlight Boost</label><span class="s-val" id="wHlV">0</span></div>
+              <sp-slider id="wHl" min="0" max="100" value="0" hide-stepper></sp-slider>
+            </div>
+          </div>
+          <div class="actions">
+            <sp-button variant="cta" id="generateUnderbase">Generate white underbase</sp-button>
+          </div>
+        </div>
+
+        <div class="pane" id="p7">
+          <div class="sec">
+            <div class="actions">
+              <sp-button variant="secondary" id="removeStray">Remove isolated pixels</sp-button>
+              <sp-button variant="secondary" id="removeHalos">Remove white halos</sp-button>
+              <sp-button variant="secondary" id="removeJpeg">Fix JPEG artefacts</sp-button>
+              <sp-button variant="secondary" id="fixAI">Fix AI-generated artwork</sp-button>
+              <sp-button variant="secondary" id="smoothEdges">Smooth jagged edges</sp-button>
+              <sp-button variant="secondary" id="autoSharpen">Auto sharpen</sp-button>
+            </div>
+            <p class="hint">Each fix creates a new layer in the Cleanup group. Original untouched.</p>
+          </div>
+        </div>
+
+        <div class="pane" id="p8">
+          <div class="sec">
+            <div class="grp">Fabric</div>
+            <div class="chips" id="garmentChips">
+              <sp-action-button selected data-garment="white">White</sp-action-button>
+              <sp-action-button data-garment="black">Black</sp-action-button>
+              <sp-action-button data-garment="heather">Heather</sp-action-button>
+              <sp-action-button data-garment="navy">Navy</sp-action-button>
+              <sp-action-button data-garment="grey">Grey</sp-action-button>
+              <sp-action-button data-garment="coloured">Colour</sp-action-button>
+            </div>
+          </div>
+          <sp-checkbox id="autoUnderbase" checked>Auto white underbase on dark garments</sp-checkbox>
+          <div class="actions"><sp-button variant="cta" id="applyGarment">Optimise for garment</sp-button></div>
+        </div>
+
+        <div class="pane" id="p9">
+          <div class="sec">
+            <div class="grp">Mode</div>
+            <div class="chips" id="dtModeChips">
+              <sp-action-button selected data-dtmode="dtg">DTG</sp-action-button>
+              <sp-action-button data-dtmode="dtf">DTF</sp-action-button>
+            </div>
+          </div>
+
+          <div class="dt-dtg-only">
+            <div class="sec">
+              <div class="grp">Printer</div>
+              <div class="chips" id="dtgChips">
+                <sp-action-button selected data-dtg="epson">Epson</sp-action-button>
+                <sp-action-button data-dtg="brother">Brother</sp-action-button>
+                <sp-action-button data-dtg="kornit">Kornit</sp-action-button>
+                <sp-action-button data-dtg="other">Other</sp-action-button>
+              </div>
+            </div>
+            <div class="sec">
+              <div class="s">
+                <div class="s-row">
+                  <label for="dtgInk">Ink Reduction</label><span class="s-val" id="dtgInkV">0</span>
+                </div>
+                <sp-slider id="dtgInk" min="0" max="40" value="0" hide-stepper></sp-slider>
+              </div>
+              <div class="s">
+                <div class="s-row">
+                  <label for="dtgWhite">White Boost</label><span class="s-val" id="dtgWhiteV">0</span>
+                </div>
+                <sp-slider id="dtgWhite" min="0" max="40" value="0" hide-stepper></sp-slider>
+              </div>
+              <div class="s">
+                <div class="s-row">
+                  <label for="dtgDetail">Detail Preserve</label><span class="s-val" id="dtgDetailV">0</span>
+                </div>
+                <sp-slider id="dtgDetail" min="0" max="100" value="0" hide-stepper></sp-slider>
+              </div>
+            </div>
+          </div>
+
+          <div class="dt-dtf-only hide">
+            <div class="sec">
+              <div class="grp">Film Type</div>
+              <div class="chips" id="dtfChips">
+                <sp-action-button selected data-dtf="standard">Standard</sp-action-button>
+                <sp-action-button data-dtf="matte">Matte</sp-action-button>
+                <sp-action-button data-dtf="soft">Soft Feel</sp-action-button>
+                <sp-action-button data-dtf="stretch">Stretch</sp-action-button>
+              </div>
+            </div>
+            <div class="sec">
+              <div class="s">
+                <div class="s-row">
+                  <label for="dtfCol">Colour Boost</label><span class="s-val" id="dtfColV">0</span>
+                </div>
+                <sp-slider id="dtfCol" min="0" max="40" value="0" hide-stepper></sp-slider>
+              </div>
+              <div class="s">
+                <div class="s-row">
+                  <label for="dtfInk">Ink Reduction</label><span class="s-val" id="dtfInkV">0</span>
+                </div>
+                <sp-slider id="dtfInk" min="0" max="40" value="0" hide-stepper></sp-slider>
+              </div>
+              <div class="s">
+                <div class="s-row">
+                  <label for="dtfSharp">Sharpening</label><span class="s-val" id="dtfSharpV">0</span>
+                </div>
+                <sp-slider id="dtfSharp" min="0" max="100" value="0" hide-stepper></sp-slider>
+              </div>
+            </div>
+          </div>
+
+          <div class="sec">
+            <div class="grp">Halftone Screen</div>
+            <sp-checkbox id="dtHalftone">Halftone the flattened output (uses the Halftone tool's settings)</sp-checkbox>
+          </div>
+
+          <div class="actions"><sp-button variant="cta" id="applyDT">Apply DT optimisation</sp-button></div>
+        </div>
+
+        <div class="pane" id="p10">
+          <div class="sec">
+            <div class="grp">Garment Colour</div>
+            <div class="chips" id="previewGarmentChips">
+              <sp-action-button selected data-prevgarment="white">White</sp-action-button>
+              <sp-action-button data-prevgarment="black">Black</sp-action-button>
+              <sp-action-button data-prevgarment="heather">Heather</sp-action-button>
+              <sp-action-button data-prevgarment="navy">Navy</sp-action-button>
+              <sp-action-button data-prevgarment="red">Red</sp-action-button>
+              <sp-action-button data-prevgarment="sand">Sand</sp-action-button>
+            </div>
+          </div>
+          <div class="stub-note">
+            <strong>Garment Preview Simulator</strong>Realistic fabric simulation with ink soak, garment colour, and
+            method-specific rendering coming next phase.
+          </div>
+        </div>
+
+        <div class="pane" id="p11">
+          <div class="prod-score-card">
+            <div class="prod-score" id="prodScore">—</div>
+            <div class="prod-label">Printability Score</div>
+            <div class="prod-detail" id="prodDetail">Run check to see results.</div>
+          </div>
+          <div class="actions"><sp-button variant="cta" id="runProduction">Run production check</sp-button></div>
+        </div>
+
+        <div class="pane" id="p12">
+          <div class="sec">
+            <div class="grp">Screen Print</div>
+            <div class="actions">
+              <sp-button variant="secondary" id="exportScreen">Export B&amp;W screens + registration</sp-button>
+            </div>
+          </div>
+          <div class="sec">
+            <div class="grp">DTG</div>
+            <div class="actions"><sp-button variant="secondary" id="exportDTG">Export flat alpha PNG</sp-button></div>
+          </div>
+          <div class="sec">
+            <div class="grp">DTF</div>
+            <div class="actions"><sp-button variant="secondary" id="exportDTF">Export DTF-ready PNG</sp-button></div>
+          </div>
+        </div>
+
+        <div class="pane" id="p13">
+          <div class="sec">
+            <div class="grp">Built-in Presets</div>
+            <div class="chips" id="presetCatChips">
+              <sp-action-button selected data-cat="printer">Printer</sp-action-button>
+              <sp-action-button data-cat="garment">Garment</sp-action-button>
+              <sp-action-button data-cat="style">Style</sp-action-button>
+            </div>
+            <div id="builtinList"></div>
+          </div>
+          <div class="sec">
+            <div class="grp">My Presets</div>
+            <sp-textfield type="text" id="presetNameInput" placeholder="Name this preset"></sp-textfield>
+            <div class="actions">
+              <sp-button variant="secondary" id="saveUserPreset">Save current settings</sp-button>
+            </div>
+            <div id="userPresetList"><p class="hint">No saved presets yet.</p></div>
+          </div>
+        </div>
+
+        <div class="pane" id="p14">
+          <div class="sec">
+            <div class="grp">Imaging Pipeline Diagnostics</div>
+            <p class="hint">
+              Runs 4 isolated tests against the real imaging API in your Photoshop: a trivial write, an identity
+              read/write, a single-pixel modify, then the real halftone algorithm at small scale. Stops at the first
+              failure. Copy the full log below to share.
+            </p>
+            <div class="actions">
+              <sp-button variant="cta" id="runDiagnostics">Run all diagnostic tests</sp-button>
+            </div>
+          </div>
+          <div class="sec">
+            <div class="grp">Log</div>
+            <pre id="diagLog" class="diag-log">Tap "Run all diagnostic tests" above.</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="bar hide" id="applyBar">
+        <sp-button variant="secondary" id="resetAll">Reset</sp-button>
+        <sp-button variant="cta" id="applyVintage">Apply</sp-button>
+      </div>
+
+      <div class="foot">
+        <div class="msg" id="status"><span id="statusText">Photoneshop ready</span></div>
+        <div class="foot-tools">
+          <span class="cov">Ink <strong id="coverageVal">—</strong></span>
+          <sp-action-button quiet id="soloGroup">Solo</sp-action-button>
+          <sp-action-button quiet id="undoLast">Undo</sp-action-button>
+        </div>
+      </div>
+    </div>
+    <script src="core/memory.js"></script>
+    <script src="core/errors.js"></script>
+    <script src="core/validation.js"></script>
+    <script src="core/benchmark.js"></script>
+    <script src="core/api.js"></script>
+    <script src="core/storage.js"></script>
+    <script src="core/preview.js"></script>
+    <script src="core/history.js"></script>
+    <script src="core/diagnostics.js"></script>
+    <script src="engines/vintage.js"></script>
+    <script src="engines/halftone.js"></script>
+    <script src="engines/halftone-tiled.js"></script>
+    <script src="engines/cleanup.js"></script>
+    <script src="engines/print.js"></script>
+    <script src="engines/separation.js"></script>
+    <script src="ai/analysis.js"></script>
+    <script src="presets/index.js"></script>
+    <script src="core/events.js"></script>
+    <script src="core/init-guard.js"></script>
+    <script src="ui/panels.js"></script>
   </body>
 </html>
-
