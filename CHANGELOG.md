@@ -5,12 +5,14 @@
 A ground-up redesign from first principles, prioritizing exceptional user experience and native Adobe feel (Camera Raw, Lightroom, Illustrator Appearance panel aesthetic).
 
 ### Architecture Changes
+
 - **Navigation:** Replaced two-tier chip nav with **left sidebar** (8 stage buttons: Artwork → Analysis → Cleanup → Halftone → Separation → Optimization → Export → Settings) + right content area (single focused page per stage)
 - **Preview:** Large live canvas as hero element (60–70% of stage height); controls below
 - **Progressive Disclosure:** Advanced options hidden by default; "Advanced ▼" toggles reveal deeper controls
 - **One Primary Button Per Page:** Each stage has a single obvious next action
 
 ### Stage Specifications
+
 1. **Artwork** — Load image, view metadata (dimensions, profile, mode)
 2. **Analysis** — Diagnostics + issue badges (thin lines, contrast, etc.) with quick-fix suggestions
 3. **Cleanup** — Noise/sharpen/flatten with live preview
@@ -21,6 +23,7 @@ A ground-up redesign from first principles, prioritizing exceptional user experi
 8. **Settings** — Display/Behaviour/Defaults/Advanced preference cards (no nested accordions)
 
 ### Component & Design System
+
 - **30+ reusable components:** base (sp-button, sp-slider, sp-textfield, sp-checkbox, sp-dropdown, etc.) + composite (Numeric Slider Card, Swatch Picker, Control Card, Pill Button Group, Issue Badge, etc.)
 - **Slider enhancement:** Three-layer interaction (visual slider + numeric input + preset buttons), live sync, full keyboard support
 - **Colour separation simplification:** Explicit Spot vs Process mode selector; per-channel cards with color-coded borders; standard CMYK angles (15°/75°/0°/45°) preset buttons
@@ -29,6 +32,7 @@ A ground-up redesign from first principles, prioritizing exceptional user experi
 - **Theme support:** Light/dark via prefers-color-scheme media query only; UXP host colour variables (--uxp-host-surface-color, etc.)
 
 ### Production Halftone Rendering
+
 - **Spot colour halftone** (default mode): Renders actual halftone pattern (not CMYK simulation) at specified LPI/angle/dot shape for true screen print, DTF, DTG output
 - **Parameters:** LPI (65–300), Angle (0–360°), Dot Shape (Round/Square/Diamond/Line), Gain (-10% to +20%), Choke (-10% to +5%), Threshold (0.5%–5%), Oversampling (1x–4x), Interpolation (Linear/Cubic/Sinc)
 - **Chunked computation:** Renders in chunks to prevent UI blocking; progress bar + spinner during render; cancel option available
@@ -36,6 +40,7 @@ A ground-up redesign from first principles, prioritizing exceptional user experi
 - **Canvas preview:** Shows actual dots, not approximation; supports zoom/fit; toggles original vs halftone vs side-by-side comparison
 
 ### Professional Colour Separation
+
 - **Per-channel control:** Separate cards for Cyan/Magenta/Yellow/Black, each with independent LPI/Angle/Gain/Choke settings
 - **Standard angles:** Preset buttons for CMYK standard angles (prevents moiré): C=15°, M=75°, Y=0°, K=45°
 - **Advanced parameters:** GCR (Grey Component Replacement) control, trapping (auto/tight/loose), underbase strategy (none/white/custom), ink density compensation, total ink coverage limit
@@ -43,7 +48,9 @@ A ground-up redesign from first principles, prioritizing exceptional user experi
 - **Live preview:** Shows actual separations with per-channel toggle visibility; dot pattern overlay visible
 
 ### UXP Implementation Guide
+
 New document (06_UXP_IMPLEMENTATION_GUIDE.md) bridges design to Photoshop reality:
+
 - Confirmed UXP widget constraints (what works: sp-slider, sp-checkbox, sp-dropdown; what doesn't: sp-tabs, sp-dialog, sp-progressbar, input[type="color"])
 - CSS constraints & workarounds (no filters, no clip-path; flexbox/grid/transitions full support)
 - Chunked rendering strategy for halftone (prevents UI blocking)
@@ -51,6 +58,7 @@ New document (06_UXP_IMPLEMENTATION_GUIDE.md) bridges design to Photoshop realit
 - Common UXP gotchas & solutions
 
 ### Version Updates
+
 - `manifest.json` — v5.5.0; minimumSize 340×600 (sidebar 76px + content), preferredDockedSize 340×900, preferredFloatingSize 420×1000
 - `package.json` — v5.5.0
 - All design documented in `photoneshop-design-v2.0.zip` (6 markdown documents, 190 KB uncompressed)
