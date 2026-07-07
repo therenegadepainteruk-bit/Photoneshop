@@ -156,10 +156,16 @@ const SPLIT_MAX_DIM = 1200; // resolution cap for colour DETECTION only — keep
 async function writeChannelLayer(layerId, col, alpha, w, h, fullW, fullH) {
   const buf = new Uint8Array(w * h * 4);
   for (let i = 0, p = 0; i < w * h; i++, p += 4) {
-    buf[p] = col.r;
-    buf[p + 1] = col.g;
-    buf[p + 2] = col.b;
-    buf[p + 3] = alpha[i];
+    // Write channel value as inverted grayscale. Halftone dots are larger for
+    // darker input, but we want larger dots for higher CMYK ink amounts. Invert
+    // so: CMYK=255 (full ink) → intensity=0 (dark) → big dots. CMYK=0 (no ink)
+    // → intensity=255 (light) → no dots. The halftone function will render these
+    // dots in the ink color (col.r, col.g, col.b).
+    const intensity = 255 - alpha[i];
+    buf[p] = intensity;
+    buf[p + 1] = intensity;
+    buf[p + 2] = intensity;
+    buf[p + 3] = 255; // fully opaque so halftone reads all pixels
   }
   const needsUpscale = fullW && fullH && (fullW !== w || fullH !== h);
   const out = needsUpscale ? upscaleNearest(buf, w, h, fullW, fullH) : buf; // upscaleNearest: engines/halftone.js
@@ -396,6 +402,16 @@ async function halftoneChannelLayer(layerId, col, lpi, angle, dpi) {
     col.g,
     col.b
   );
+  // Halftone produces colored dots on black background. For CMYK separations,
+  // convert black background to white so the layer displays correctly for
+  // screen printing (dots in ink color on white, when rendered over white).
+  for (let i = 0; i < out.length; i += 4) {
+    if (out[i] === 0 && out[i + 1] === 0 && out[i + 2] === 0) {
+      out[i] = 255;
+      out[i + 1] = 255;
+      out[i + 2] = 255;
+    }
+  }
   const imgData = await window.imaging.createImageDataFromBuffer(out, {
     width: src.w,
     height: src.h,
