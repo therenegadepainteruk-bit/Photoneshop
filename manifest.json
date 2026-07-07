@@ -2,7 +2,7 @@
   "manifestVersion": 5,
   "id": "com.photoneshop.core",
   "name": "Photoneshop",
-  "version": "5.4.12",
+  "version": "5.5.0",
   "main": "index.html",
   "host": {
     "app": "PS",
@@ -19,8 +19,8 @@
         "default": "Photoneshop"
       },
       "minimumSize": {
-        "width": 280,
-        "height": 400
+        "width": 340,
+        "height": 600
       },
       "maximumSize": {
         "width": 1200,
@@ -31,8 +31,8 @@
         "height": 900
       },
       "preferredFloatingSize": {
-        "width": 380,
-        "height": 920
+        "width": 420,
+        "height": 1000
       },
       "icons": [
         {
