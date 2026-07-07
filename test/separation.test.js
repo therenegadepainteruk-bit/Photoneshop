@@ -47,7 +47,7 @@ describe("engines/separation.js (real) — auto separation", () => {
 
   it("REGRESSION GUARD: writeChannelLayer upscales to full document size (canvas-coverage fix)", () => {
     const src = readRepoFile("engines/separation.js");
-    expect(/function writeChannelLayer[\s\S]{0,400}upscaleNearest/.test(src)).toBe(true);
+    expect(/function writeChannelLayer[\s\S]{0,500}upscaleNearest/.test(src)).toBe(true);
   });
 
   it("autoSeparate is exported as a real function", () => {

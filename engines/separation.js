@@ -156,16 +156,12 @@ const SPLIT_MAX_DIM = 1200; // resolution cap for colour DETECTION only — keep
 async function writeChannelLayer(layerId, col, alpha, w, h, fullW, fullH) {
   const buf = new Uint8Array(w * h * 4);
   for (let i = 0, p = 0; i < w * h; i++, p += 4) {
-    // Write channel value as inverted grayscale. Halftone dots are larger for
-    // darker input, but we want larger dots for higher CMYK ink amounts. Invert
-    // so: CMYK=255 (full ink) → intensity=0 (dark) → big dots. CMYK=0 (no ink)
-    // → intensity=255 (light) → no dots. The halftone function will render these
-    // dots in the ink color (col.r, col.g, col.b).
+    // Invert: CMYK=255 (full ink) → intensity=0 (dark) → big halftone dots
     const intensity = 255 - alpha[i];
     buf[p] = intensity;
     buf[p + 1] = intensity;
     buf[p + 2] = intensity;
-    buf[p + 3] = 255; // fully opaque so halftone reads all pixels
+    buf[p + 3] = 255;
   }
   const needsUpscale = fullW && fullH && (fullW !== w || fullH !== h);
   const out = needsUpscale ? upscaleNearest(buf, w, h, fullW, fullH) : buf; // upscaleNearest: engines/halftone.js
